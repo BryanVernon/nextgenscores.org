@@ -60,10 +60,12 @@ app.get("/api/update-games", async (req, res) => {
   try {
     const today = new Date();
     const year = today.getFullYear();
+    const week = 11; // Only fetch Week 11
     const headers = { Authorization: `Bearer ${process.env.CFB_API_KEY}` };
 
+    // Fetch games for the specific week
     const response = await fetch(
-      `https://api.collegefootballdata.com/games?year=${year}&seasonType=regular`,
+      `https://api.collegefootballdata.com/games?year=${year}&seasonType=regular&week=${week}`,
       { headers }
     );
 
@@ -71,10 +73,6 @@ app.get("/api/update-games", async (req, res) => {
     let inserted = 0;
 
     for (const game of data) {
-      const gameDate = new Date(game.start_date);
-      const diffDays = (gameDate - today) / (1000 * 60 * 60 * 24);
-      if (diffDays < 0 || diffDays > 7) continue; // only this weekend
-
       const spread = game.lines?.[0]?.spread ?? null;
 
       const gameDoc = {
@@ -89,7 +87,7 @@ app.get("/api/update-games", async (req, res) => {
       inserted++;
     }
 
-    res.json({ message: `Fetched and updated ${inserted} games.` });
+    res.json({ message: `Fetched and updated ${inserted} games for Week ${week}.` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch games from CollegeFootballData API" });
