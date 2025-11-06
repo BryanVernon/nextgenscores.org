@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import fetch from "node-fetch";
 
 dotenv.config();
 
@@ -9,40 +10,92 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Connect to MongoDB
+// Connect to MongoDB Atlas 'ncaa' database
 const uri = process.env.MONGODB_URI;
 mongoose
-  .connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ Connected to MongoDB Atlas"))
+  .connect(uri, { dbName: "ncaa" })
+  .then(() => console.log("✅ Connected to MongoDB Atlas (ncaa database)"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Simple schema for now
+// Game schema
 const GameSchema = new mongoose.Schema({
+  gameId: Number,
   homeTeam: String,
   awayTeam: String,
-  spread: String,
+  spread: Number,
   date: String,
 });
 const Game = mongoose.model("Game", GameSchema);
 
-// Basic route
+// Health check
 app.get("/", (req, res) => {
   res.send("NextGenScores API is live!");
 });
 
-// Placeholder to list games
+// List all games
 app.get("/api/games", async (req, res) => {
-  const games = await Game.find();
-  res.json(games);
+  try {
+    const games = await Game.find({}, { _id: 0 });
+    res.json(games);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch games from MongoDB" });
+  }
 });
 
-// Temporary route to add a test game
+// Add a test game
 app.post("/api/games", async (req, res) => {
-  const newGame = new Game(req.body);
-  await newGame.save();
-  res.json(newGame);
+  try {
+    const newGame = new Game(req.body);
+    await newGame.save();
+    res.json(newGame);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save game" });
+  }
 });
 
-// Start server
+// Fetch this weekend's games + spreads
+app.get("/api/update-games", async (req, res) => {
+  try {
+    const today = new Date();
+    const year = today.getFullYear();
+    const headers = { Authorization: `Bearer ${process.env.CFB_API_KEY}` };
+
+    const response = await fetch(
+      `https://api.collegefootballdata.com/games?year=${year}&seasonType=regular`,
+      { headers }
+    );
+
+    const data = await response.json();
+    let inserted = 0;
+
+    for (const game of data) {
+      const gameDate = new Date(game.start_date);
+      const diffDays = (gameDate - today) / (1000 * 60 * 60 * 24);
+      if (diffDays < 0 || diffDays > 7) continue; // only this weekend
+
+      const spread = game.lines?.[0]?.spread ?? null;
+
+      const gameDoc = {
+        gameId: game.id,
+        homeTeam: game.homeTeam,
+        awayTeam: game.awayTeam,
+        spread,
+        date: game.start_date,
+      };
+
+      await Game.updateOne({ gameId: game.id }, { $set: gameDoc }, { upsert: true });
+      inserted++;
+    }
+
+    res.json({ message: `Fetched and updated ${inserted} games.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch games from CollegeFootballData API" });
+  }
+});
+
+// Start server (Render uses process.env.PORT)
 const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
