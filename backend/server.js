@@ -32,6 +32,10 @@ const gameSchema = new mongoose.Schema({
   venue: String,
   awayConference: String,
   homeConference: String,
+  homeLogo: String,
+  awayLogo: String,
+  spread: Number,
+  overUnder: Number,
 });
 
 const Game = mongoose.model("game", gameSchema);
@@ -39,11 +43,10 @@ const Game = mongoose.model("game", gameSchema);
 // --- Health check ---
 app.get("/", (req, res) => res.send("NextGenScores API is live!"));
 
-// --- Route: Fetch all 2025 games from API and store in DB ---
-// --- Route: Fetch all 2025 games from API and store in DB ---
+// --- Route: Fetch all 2025 games, logos, and betting lines ---
 app.get("/api/fetch-2025-games", async (req, res) => {
   try {
-    // Clear existing games first
+    // Clear existing games
     await Game.deleteMany({});
     console.log("🗑️ Cleared all existing games from MongoDB");
 
@@ -51,32 +54,61 @@ app.get("/api/fetch-2025-games", async (req, res) => {
       ? { Authorization: `Bearer ${process.env.CFB_API_KEY}` }
       : {};
 
-    const response = await fetch(
+    // --- Fetch games ---
+    const gamesRes = await fetch(
       "https://api.collegefootballdata.com/games?year=2025",
       { headers }
     );
+    const gamesData = await gamesRes.json();
 
-    if (!response.ok) {
-      throw new Error(`CFB API request failed: ${response.statusText}`);
-    }
+    // --- Fetch teams ---
+    const teamsRes = await fetch("https://api.collegefootballdata.com/teams", { headers });
+    const teamsData = await teamsRes.json();
 
-    const data = await response.json();
+    // Create a lookup map: team name => logo URL
+    const teamLogoMap = {};
+    teamsData.forEach(team => {
+      if (team.school && team.logos && team.logos.length > 0) {
+        teamLogoMap[team.school] = team.logos[0]; // take first logo
+      }
+    });
 
-    // Log first 5 games to inspect
-    console.log("🚀 First 5 games from API:");
-    console.log(data.slice(0, 5));
+    // --- Fetch betting lines ---
+    const linesRes = await fetch("https://api.collegefootballdata.com/lines?year=2025", { headers });
+    const linesData = await linesRes.json();
+    // Create a map: gameId => lines object
+    const linesMap = {};
+    linesData.forEach(line => {
+      linesMap[line.id] = line.lines && line.lines.length > 0 ? line.lines[0] : {};
+    });
 
-    const validGames = data.filter((g) => g.homeTeam && g.awayTeam);
+    // --- Enrich games ---
+    const enrichedGames = gamesData.map(g => ({
+      id: g.id,
+      season: g.season,
+      week: g.week,
+      homeTeam: g.homeTeam,
+      awayTeam: g.awayTeam,
+      homePoints: g.homePoints ?? null,
+      awayPoints: g.awayPoints ?? null,
+      startDate: g.startDate,
+      venue: g.venue,
+      homeConference: g.homeConference,
+      awayConference: g.awayConference,
+      homeLogo: teamLogoMap[g.homeTeam] ?? "",
+      awayLogo: teamLogoMap[g.awayTeam] ?? "",
+      spread: linesMap[g.id]?.spread ?? null,
+      overUnder: linesMap[g.id]?.overUnder ?? null,
+    }));
 
-    // Insert new games
-    const result = await Game.insertMany(validGames, { ordered: false }).catch((err) => {
+    const result = await Game.insertMany(enrichedGames, { ordered: false }).catch(err => {
       if (err.code !== 11000) console.error(err);
     });
 
-    res.json({ message: `Inserted ${result?.length || 0} games into the database` });
+    res.json({ message: `Inserted ${result?.length || 0} games with logos and betting data.` });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to fetch or store games", details: err.message });
+    res.status(500).json({ error: "Failed to fetch or store enriched games", details: err.message });
   }
 });
 
@@ -85,11 +117,6 @@ app.get("/api/fetch-2025-games", async (req, res) => {
 app.get("/api/games", async (req, res) => {
   try {
     const games = await Game.find().sort({ week: 1 });
-
-    // Log first 5 games from DB to inspect
-    console.log("🗄️ First 5 games from DB:");
-    console.log(games.slice(0, 5));
-
     res.json(games);
   } catch (err) {
     console.error(err);

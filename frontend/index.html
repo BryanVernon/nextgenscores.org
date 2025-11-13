@@ -30,6 +30,7 @@
       border: 1px solid #ddd;
       padding: 8px 12px;
       text-align: left;
+      vertical-align: middle;
     }
 
     th {
@@ -39,6 +40,18 @@
 
     tr:nth-child(even) {
       background-color: #f2f2f2;
+    }
+
+    .team-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .team-cell img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
     }
 
     #loading {
@@ -57,12 +70,14 @@
     <thead>
       <tr>
         <th>Week</th>
-        <th>Home Team</th>
-        <th>Away Team</th>
+        <th>Matchup</th>
+        
         <th>Home Score</th>
         <th>Away Score</th>
         <th>Date</th>
         <th>Venue</th>
+        <th>Spread</th>
+        <th>O/U</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -73,12 +88,14 @@
     <thead>
       <tr>
         <th>Week</th>
-        <th>Home Team</th>
-        <th>Away Team</th>
+        <th>Matchup</th>
+        
         <th>Home Score</th>
         <th>Away Score</th>
         <th>Date</th>
         <th>Venue</th>
+        <th>Spread</th>
+        <th>O/U</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -96,34 +113,41 @@
         const res = await fetch(`${API_BASE}/games`);
         const games = await res.json();
 
-        // Filter only SEC games
+        // Filter SEC games
         const secGames = games.filter(
           game =>
             (game.homeConference === "SEC" || game.awayConference === "SEC") &&
             (game.week === 10 || game.week === 11)
         );
 
-        // Separate by week
         const week10Games = secGames.filter(game => game.week === 10);
         const week11Games = secGames.filter(game => game.week === 11);
 
-        // Function to populate table
         function populateTable(tableBody, gameArray) {
           tableBody.innerHTML = "";
           if (gameArray.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="7">No games found.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="9">No games found.</td></tr>`;
             return;
           }
+
           gameArray.forEach(game => {
             const row = document.createElement("tr");
             row.innerHTML = `
               <td>${game.week}</td>
-              <td>${game.homeTeam}</td>
-              <td>${game.awayTeam}</td>
+              <td class="team-cell">
+                ${game.homeLogo ? `<img src="${game.homeLogo}" alt="${game.homeTeam} logo">` : ""}
+                ${game.homeTeam}
+              </td>
+              <td class="team-cell">
+                ${game.awayLogo ? `<img src="${game.awayLogo}" alt="${game.awayTeam} logo">` : ""}
+                ${game.awayTeam}
+              </td>
               <td>${game.homePoints ?? "-"}</td>
               <td>${game.awayPoints ?? "-"}</td>
               <td>${game.startDate ? new Date(game.startDate).toLocaleString() : ""}</td>
               <td>${game.venue || ""}</td>
+              <td>${game.spread ?? "-"}</td>
+              <td>${game.overUnder ?? "-"}</td>
             `;
             tableBody.appendChild(row);
           });
@@ -131,11 +155,10 @@
 
         populateTable(week10Body, week10Games);
         populateTable(week11Body, week11Games);
-
       } catch (err) {
         console.error(err);
-        week10Body.innerHTML = `<tr><td colspan="7">Failed to load games.</td></tr>`;
-        week11Body.innerHTML = `<tr><td colspan="7">Failed to load games.</td></tr>`;
+        week10Body.innerHTML = `<tr><td colspan="9">Failed to load games.</td></tr>`;
+        week11Body.innerHTML = `<tr><td colspan="9">Failed to load games.</td></tr>`;
       } finally {
         loading.style.display = "none";
       }

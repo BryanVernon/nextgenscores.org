@@ -1,0 +1,252 @@
+.game-list {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+
+.filter {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.game-card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 8px;
+  padding-bottom: 0px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px; /* Default margin between cards */
+}
+
+.game-day {
+  text-align: center;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 5px;
+  margin-bottom: 0px; /* Reduce this value */
+}
+.game-card:first-child {
+  margin-top: 0px !important;
+}
+
+
+
+ul {
+  list-style-type: none;
+  padding-left: 0;
+  
+}
+
+.media-info p {
+  font-style: italic;
+  color: #555;
+}
+
+.game-separator {
+  border-bottom: 1px solid #ccc;
+  margin: 5px 0; /* Less space between separator and card */
+  margin-bottom: 20px;
+}
+.filter-container {
+  display: flex;
+  flex-direction: column; /* Stack filters vertically */
+  gap: 10px; /* Space between filters */
+}
+
+.filter {
+  display: flex;
+  gap: 10px; /* Space between conference and team filters */
+  flex-wrap: wrap;
+}
+
+.filter select {
+  width: 120px; /* Ensure selects take full width */
+}
+.filter label {
+  margin-right: 10px; /* Space between label and select */
+}
+
+.game-info {
+  display: flex;
+  align-items: stretch; /* Make children stretch to the same height */
+  gap: 10px; /* optional spacing between left and right */
+}
+
+.game-details-left {
+  display: flex;
+  flex-direction: column;
+  flex: 2; /* Ensure it takes more space */
+}
+
+.team-info {
+  display: flex;
+  align-items: center; /* Align items vertically centered */
+  margin-bottom: 5px; /* Space between team entries */
+}
+
+
+
+.team-record {
+  font-weight: normal; /* Ensure the record isn't bold */
+  margin-left: auto;
+  padding-right: 10px;
+  white-space: nowrap; /* Prevent text from wrapping */
+}
+
+.game-details-right {
+  flex: 1; /* take less space */
+  text-align: right;
+  border-left: 2px solid #ddd;
+  padding-left: 15px;
+  /* height will now stretch automatically */
+}
+
+.game-details-right h4,
+.game-details-right p {
+  margin: 0; /* Remove default margins */
+}
+
+.game-date {
+  text-align: center;
+  margin: 0; /* Remove margin for better alignment */
+  border-bottom: 2px solid #ddd; /* Line under the date */
+  padding-bottom: 5px; /* Space between text and line */
+}
+.team-name {
+  font-size: 1.2em; /* Adjust as needed */
+  margin-right: 15px; /* Adjust spacing between name and record */
+  font-weight: bold;
+}
+.betting-card {
+  background-color: #f0f0f0; /* A duller background color */
+  border: 1px solid #ccc; /* A lighter border for a subtler look */
+  border-radius: 6px; /* Slightly smaller border radius */
+  padding: 5px; /* Reduced padding */
+  margin-top: 10px;
+  box-shadow: none; /* Remove shadow for a flatter appearance */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center align content */
+  text-align: center;
+  font-size: 0.9em; /* Slightly smaller text size */
+}
+
+.betting-card p {
+  margin: 3px 0; /* Adjust space around text */
+}
+
+.betting-card .betting-info {
+  display: flex;
+  gap: 5px; /* Adjust space between betting lines */
+  font-weight: normal; /* Ensure normal font weight */
+}
+.team-logo img {
+  width: 30px; /* Adjust size as needed */
+  height: auto; /* Maintain aspect ratio */
+  margin-right: 8px; /* Space between logo and team name */
+  vertical-align: middle; /* Align with text */
+}
+.final-score-container {
+  display: flex;
+  align-items: center; /* Center items vertically */
+  padding: 10px 0;
+  border-bottom: 1px solid #ccc; /* Optional */
+}
+.team-logo{
+  padding-right: 5px;
+}
+
+.team-info-left{
+  display: flex;
+  align-items: left; /* Center align */
+}
+
+.team-info-right{
+  display: flex;
+  align-items: right; /* Center align */
+  justify-content: right;
+}
+
+.team-score-home,
+.team-score-away {
+  display: flex;
+  align-items: center; /* Center align */
+  font-size: 2.9rem;
+}
+
+.team-info-left {
+  justify-content: flex-start; /* Align left */
+  flex: 1; /* Flex-grow to fill available space */
+}
+
+.team-info-right {
+  justify-content: right;
+  align-items: right; /* Align right */
+  flex: 1; /* Flex-grow to fill available space */
+  text-align: right; /* Right-align for the right team */
+}
+
+.vs {
+  margin: 0 10px; /* Add space around "vs" */
+  font-weight: bold; /* Bold for emphasis */
+}
+.large-score {
+  font-size: 2.5em; /* Adjust size as needed */
+  font-weight: bold; /* Optional: make it bold */
+  padding-right: 5px;
+}
+
+.small-score {
+  font-size: 1.5em; /* Regular size */
+  color: rgb(51, 51, 51);
+  padding-right: 20px;
+}
+.team-info-left .team-record {
+  font-weight: normal; /* Ensure the record isn't bold */
+  white-space: nowrap; /* Prevent text from wrapping */
+  text-align: left; /* Left-align for the left team */
+}
+
+.team-info-right .team-record {
+  font-weight: normal; /* Ensure the record isn't bold */
+  padding-right: 16px; /* Optional: space between the record and edge */
+  white-space: nowrap; /* Prevent text from wrapping */
+  text-align: right; /* Right-align for the right team */
+}
+
+
+
+
+
+@media (max-width: 454px) {
+  .team-name {
+    font-size: 1.1em; /* Adjust to make it smaller on iPhones */
+    font-weight: bold; /* Make the font weight lighter on smaller screens */
+  }
+  .large-score {
+    font-size: 1.4em; /* Adjust size as needed */
+    font-weight: bold; /* Optional: make it bold */
+  }
+  
+  .small-score {
+    font-size: 1em; /* Regular size */
+    color: rgb(51, 51, 51)
+  }
+  .vs {
+    margin: 0 7px; /* Add space around "vs" */
+    font-weight: bold; /* Bold for emphasis */
+  }
+  .team-info-left,
+  .team-info-right {
+    display: flex;
+    flex-direction: column; /* Stack vertically on small screens */
+  }
+}
+
+
+
+
