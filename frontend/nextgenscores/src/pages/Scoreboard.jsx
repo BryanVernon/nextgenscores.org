@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import "./App.css";
+import "../App.css";
 
 
 export default function App() {
@@ -104,7 +104,6 @@ export default function App() {
             ))}
           </select>
         </div>
-        
       </header>
 
       {loading && <div className="text-center py-8">Loading games...</div>}

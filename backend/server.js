@@ -3,13 +3,16 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import cors from "cors";
+import User from "./models/user.js";
+import emailRouter from "./routes/email.js";
+
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(cors());
-
+app.use("/api/email", emailRouter);
 // --- Connect to MongoDB ---
 mongoose
   .connect(process.env.MONGODB_URI, {
@@ -123,6 +126,140 @@ app.get("/api/games", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch games from MongoDB" });
   }
 });
+
+// --- POST: Save a user pick ---
+app.post("/api/picks", auth, async (req, res) => {
+  const { gameId, pick, week, season, spread } = req.body;
+
+  const existing = await Pick.findOne({ userId: req.user.userId, gameId });
+  if (existing) {
+    return res.status(400).json({ error: "Already picked this game" });
+  }
+
+  const newPick = await Pick.create({
+    userId: req.user.userId,
+    gameId,
+    pick,
+    week,
+    season,
+    spread
+  });
+
+  res.json({ message: "Pick saved", pick: newPick });
+});
+
+
+app.get("/api/picks/:userId", async (req, res) => {
+  try {
+    const picks = await Pick.find({ userId: req.params.userId });
+    res.json(picks);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch user picks" });
+  }
+});
+
+
+app.get("/api/leaderboard", async (req, res) => {
+  const users = await User.find();
+  const picks = await Pick.find();
+
+  const leaderboard = users.map(u => {
+    const userPicks = picks.filter(p => p.userId.toString() === u._id.toString());
+
+    const correct = userPicks.filter(p => {
+      const game = gamesMap[p.gameId];
+      if (!game) return false;
+      if (game.homePoints == null) return false;
+
+      const result = game.homePoints - game.awayPoints;
+
+      const covered =
+        (p.pick === "home" && result + p.spread > 0) ||
+        (p.pick === "away" && result + p.spread < 0);
+
+      return covered;
+    }).length;
+
+    return {
+      user: u.displayName || u.email,
+      correct,
+      total: userPicks.length,
+      pct: userPicks.length ? (correct / userPicks.length).toFixed(3) : 0
+    };
+  });
+
+  res.json(leaderboard.sort((a, b) => b.pct - a.pct));
+});
+
+app.post("/api/register", async (req, res) => {
+  try {
+    const { email, password, displayName, isTestUser } = req.body;
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      email,
+      passwordHash: hash,
+      displayName,
+      isTestUser: isTestUser || false
+    });
+
+    res.json({ message: "User created", user });
+  } catch (err) {
+    res.status(400).json({ error: "Registration failed", details: err.message });
+  }
+});
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(400).json({ error: "Invalid email or password" });
+
+  const match = await bcrypt.compare(password, user.passwordHash);
+  if (!match) return res.status(400).json({ error: "Invalid email or password" });
+
+  const token = jwt.sign(
+    { userId: user._id, email: user.email },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  res.json({ token, user });
+});
+const auth = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) return res.status(401).json({ error: "No token provided" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid token" });
+  }
+};
+
+app.get("/api/picks/mine", auth, async (req, res) => {
+  const picks = await Pick.find({ userId: req.user.userId });
+  res.json(picks);
+});
+
+app.post("/api/create-test-user", async (req, res) => {
+  const random = Math.floor(Math.random() * 10000);
+  const email = `test${random}@test.com`;
+  const passwordHash = await bcrypt.hash("password", 10);
+
+  const user = await User.create({
+    email,
+    passwordHash,
+    displayName: `TestUser${random}`,
+    isTestUser: true
+  });
+
+  res.json({ message: "Test user created", user });
+});
+
 
 // --- Start server ---
 const PORT = process.env.PORT || 5000;
