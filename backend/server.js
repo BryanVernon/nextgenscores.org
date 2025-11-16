@@ -9,7 +9,10 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",  // your frontend origin
+  credentials: true,               // allow cookies to be sent
+}));
 app.use("/api", subscriberRoutes);
 // --- Connect to MongoDB ---
 mongoose
