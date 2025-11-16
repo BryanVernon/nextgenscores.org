@@ -2,13 +2,17 @@ import { useForm } from "react-hook-form";
 import { useContext, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import axios from "../../api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 
 export default function Login() {
   const { register, handleSubmit } = useForm();
-  const { setUser } = useContext(AuthContext);
+  const { user, setUser, loading } = useContext(AuthContext);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  if (loading) return <div>Loading...</div>;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   const onSubmit = async (data) => {
     try {

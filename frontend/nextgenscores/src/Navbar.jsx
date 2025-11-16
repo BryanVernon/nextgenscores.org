@@ -1,18 +1,27 @@
+import { Link } from "react-router-dom";
+import { useContext } from "react";
+import { AuthContext } from "./context/AuthContext";
 import "./Navbar.css";
 
 const Navbar = () => {
+  const { user, logout } = useContext(AuthContext);
+
   return (
     <nav>
-        <h1>NextGenScores</h1>
-        <ul>
-            <li><a href="/">Dashboard</a></li>
-            <li><a href="/schedule">CFB Schedule</a></li>
-            <li><a href="/pickem">Pick 'Em</a></li>
-            <li><a href="/contact">Leaderboard</a></li>
-            <li><a href="/signup">Sign Up</a></li>
-            <li><a href="/login">Login</a></li>
-        </ul>
+      <h1>NextGenScores</h1>
+      <ul>
+        {user ? (
+          <>
+            <li><Link to="/">Dashboard</Link></li>
+            <li><Link to="/schedule">CFB Schedule</Link></li>
+            <li><Link to="/pickem">Pick 'Em</Link></li>
+            <li><Link to="/contact">Leaderboard</Link></li>
+            <li><button onClick={logout}>Logout</button></li>
+          </>
+        ) : null}
+      </ul>
     </nav>
   );
-}
+};
+
 export default Navbar;

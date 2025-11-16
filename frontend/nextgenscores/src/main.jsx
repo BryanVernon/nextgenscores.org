@@ -1,7 +1,7 @@
-import { StrictMode } from "react";
+import { StrictMode, useContext } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { AuthProvider, AuthContext } from "./context/AuthContext";
 import Layout from "./Layout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import PickEmPage from "./pages/PickEmPage.jsx";
@@ -10,34 +10,43 @@ import Signup from "./components/auth/Signup.jsx";
 import Login from "./components/auth/Login.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
-const router = createBrowserRouter([
-  // Auth pages — no navbar
-  { path: "/signup", element: <Signup /> },
-  { path: "/login", element: <Login /> },
+// Landing component must use AuthContext
+function Landing() {
+  const { user, loading } = useContext(AuthContext);
 
-  // Main app pages — wrapped in Layout (navbar)
+  if (loading) return <div>Loading...</div>;
+  return user ? <Navigate to="/dashboard" replace /> : <Signup />;
+}
+
+const router = createBrowserRouter([
+  // Auth pages — login/signup
+  { path: "/login", element: <Login /> },
+  { path: "/signup", element: <Signup /> },
+
+  // Main app pages
   {
     path: "/",
     element: <Layout />,
     children: [
-      { index: true, element: <Dashboard /> },           // home page
+      { index: true, element: <Landing /> }, // smart landing
       { path: "dashboard", element: 
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
+        <ProtectedRoute><Dashboard /></ProtectedRoute>
       },
-      { path: "pickem", element: <PickEmPage /> },
-      { path: "schedule", element: <Scoreboard /> },
+      { path: "pickem", element: 
+        <ProtectedRoute><PickEmPage /></ProtectedRoute>
+      },
+      { path: "schedule", element: 
+        <ProtectedRoute><Scoreboard /></ProtectedRoute>
+      },
       { path: "*", element: <div>404 Not Found</div> },
     ],
   },
 ]);
 
-
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <RouterProvider router={router} /> {/* ← pass the router object */}
     </AuthProvider>
   </StrictMode>
 );

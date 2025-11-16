@@ -17,7 +17,7 @@ function sendTokenCookie(res, token) {
   res.cookie(cookieName, token, {
     httpOnly: true,
     secure,
-    sameSite: secure ? "none" : "lax",
+    sameSite: "lax",   // 'lax' works for localhost; use 'none' + secure for production
     maxAge: (() => {
       // parse duration like '7d' to ms, fallback to 7 days
       const v = process.env.JWT_EXPIRES_IN || "7d";
