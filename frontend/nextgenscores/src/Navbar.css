@@ -1,0 +1,56 @@
+/* Navbar container */
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(90deg, #4f46e5, #6366f1); /* purple gradient */
+  padding: 1rem 2rem;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Logo / Site title */
+nav h1 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+/* Nav links */
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+nav ul li a:hover {
+  color: #facc15; /* amber/yellow highlight */
+  transform: scale(1.05);
+}
+
+/* Responsive for smaller screens */
+@media (max-width: 768px) {
+  nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  nav ul {
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+  }
+}

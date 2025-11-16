@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import "../App.css";
-
+import Navbar from '../Navbar.jsx';
 
 export default function App() {
   const API_URL = 'https://nextgenscores-org.onrender.com/api/games'
@@ -82,6 +82,10 @@ export default function App() {
   }
 
   return (
+    <>
+      
+    
+
     <div className="game-list">
       <header className="filter-container">
         <h1>NextGenScores - College Football</h1>
@@ -104,6 +108,7 @@ export default function App() {
             ))}
           </select>
         </div>
+        
       </header>
 
       {loading && <div className="text-center py-8">Loading games...</div>}
@@ -124,6 +129,7 @@ export default function App() {
         </>
       )}
     </div>
+    </>
   )
 }
 
@@ -155,6 +161,7 @@ function GameCard({ game }) {
   const overUnder = game.overUnder ?? null;
 
   return (
+    
     <>
       <div className="game-info">
 
