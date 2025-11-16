@@ -13,19 +13,14 @@ function signToken(userId) {
 
 function sendTokenCookie(res, token) {
   const cookieName = process.env.COOKIE_NAME || "ngs_token";
-  const secure = process.env.COOKIE_SECURE === "true";
   res.cookie(cookieName, token, {
     httpOnly: true,
-    secure,
-    sameSite: "lax",   // 'lax' works for localhost; use 'none' + secure for production
-    maxAge: (() => {
-      // parse duration like '7d' to ms, fallback to 7 days
-      const v = process.env.JWT_EXPIRES_IN || "7d";
-      if (v.endsWith("d")) return parseInt(v) * 24 * 60 * 60 * 1000;
-      return 7 * 24 * 60 * 60 * 1000;
-    })(),
+    secure: true,       // must be true for SameSite none
+    sameSite: "none",   // allow cross-site cookies
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
+
 
 // POST /api/auth/signup
 router.post("/signup", async (req, res) => {
