@@ -4,11 +4,14 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 import cors from "cors";import subscriberRoutes from "./routes/subscriberRoutes.js";
 import authRoutes from "./routes/auth.js";
+import cookieParser from "cookie-parser";
+
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 const allowedOrigins = [
   "https://nextgenscores.org",
   "http://localhost:5173",  // for local testing
