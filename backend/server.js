@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 const allowedOrigins = [
   "https://nextgenscores.org",
-  "http://localhost:5174",  // for local testing
+  "http://localhost:5173",  // for local testing
 ];
 
 app.use(
@@ -28,7 +28,10 @@ app.use(
     credentials: true, // allow cookies
   })
 );
-
+app.options("*", cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));
 app.use("/api", subscriberRoutes);
 // --- Connect to MongoDB ---
 mongoose

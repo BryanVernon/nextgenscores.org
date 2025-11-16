@@ -87,7 +87,7 @@ export default function App() {
 
     <div className="game-list">
       <header className="filter-container">
-        <h1>NextGenScores - College Football</h1>
+        <h1>College Football Schedule</h1>
         <div className="filter">
           <label>Week</label>
           <select value={week} onChange={handleWeekChange}>
