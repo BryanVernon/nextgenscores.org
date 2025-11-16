@@ -9,10 +9,26 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-app.use(cors({
-  origin: "https://nextgenscores.org",  // your frontend origin
-  credentials: true,               // allow cookies to be sent
-}));
+const allowedOrigins = [
+  "https://nextgenscores.org",
+  "http://localhost:5174",  // for local testing
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (like Postman) 
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true, // allow cookies
+  })
+);
+
 app.use("/api", subscriberRoutes);
 // --- Connect to MongoDB ---
 mongoose

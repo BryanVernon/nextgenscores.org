@@ -26,21 +26,20 @@ const router = createBrowserRouter([
   // Main app pages
   {
     path: "/",
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
-      { index: true, element: <Landing /> }, // smart landing
-      { path: "dashboard", element: 
-        <ProtectedRoute><Dashboard /></ProtectedRoute>
-      },
-      { path: "pickem", element: 
-        <ProtectedRoute><PickEmPage /></ProtectedRoute>
-      },
-      { path: "schedule", element: 
-        <ProtectedRoute><Scoreboard /></ProtectedRoute>
-      },
+      { index: true, element: <Landing /> },
+      { path: "dashboard", element: <Dashboard /> },
+      { path: "pickem", element: <PickEmPage /> },
+      { path: "schedule", element: <Scoreboard /> },
       { path: "*", element: <div>404 Not Found</div> },
     ],
-  },
+  }
+
 ]);
 
 createRoot(document.getElementById("root")).render(

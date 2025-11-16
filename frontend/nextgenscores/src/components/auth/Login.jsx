@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { useContext, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import axios from "../../api";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, Link } from "react-router-dom";
 
 export default function Login() {
   const { register, handleSubmit } = useForm();
@@ -33,6 +33,9 @@ export default function Login() {
         <button type="submit">Login</button>
       </form>
       {error && <p style={{ color: "red" }}>{error}</p>}
+      <p style={{ marginTop: "1rem" }}>
+              Don't have an account? <Link to="/signup">Sign Up</Link>
+            </p>
     </div>
   );
 }
