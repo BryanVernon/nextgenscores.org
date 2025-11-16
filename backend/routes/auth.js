@@ -13,13 +13,16 @@ function signToken(userId) {
 
 function sendTokenCookie(res, token) {
   const cookieName = process.env.COOKIE_NAME || "ngs_token";
+  const isProd = process.env.NODE_ENV === "production";
+
   res.cookie(cookieName, token, {
     httpOnly: true,
-    secure: true,       // must be true for SameSite none
-    sameSite: "none",   // allow cross-site cookies
+    secure: isProd,                       // true in prod, false in dev
+    sameSite: isProd ? "none" : "lax",    // none for cross-site prod, lax for localhost
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
+
 
 
 // POST /api/auth/signup

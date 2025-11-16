@@ -16,9 +16,13 @@ export default function Login() {
 
   const onSubmit = async (data) => {
     try {
-      const res = await axios.post("/auth/login", data);
-      setUser(res.data.user);  // store user in context
-      navigate("/dashboard");  // go to dashboard
+      const res = await axios.post("/auth/login", data, { withCredentials: true });
+      
+      // Update context with user returned from backend
+      setUser(res.data.user);
+
+      // Redirect to dashboard or schedule
+      navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }
@@ -34,8 +38,8 @@ export default function Login() {
       </form>
       {error && <p style={{ color: "red" }}>{error}</p>}
       <p style={{ marginTop: "1rem" }}>
-              Don't have an account? <Link to="/signup">Sign Up</Link>
-            </p>
+        Don't have an account? <Link to="/signup">Sign Up</Link>
+      </p>
     </div>
   );
 }
