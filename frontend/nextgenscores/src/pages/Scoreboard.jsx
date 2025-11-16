@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import "../App.css";
-import Navbar from '../Navbar.jsx';
 
 export default function App() {
   const API_URL = 'https://nextgenscores-org.onrender.com/api/games'

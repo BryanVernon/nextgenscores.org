@@ -1,4 +1,4 @@
-// src/Layout.jsx
+import React from "react";
 import Navbar from "./Navbar.jsx";
 import { Outlet } from "react-router-dom";
 
@@ -7,7 +7,7 @@ export default function Layout() {
     <div>
       <Navbar />
       <main className="p-4">
-        <Outlet /> {/* This is where each page will load */}
+        <Outlet />
       </main>
     </div>
   );

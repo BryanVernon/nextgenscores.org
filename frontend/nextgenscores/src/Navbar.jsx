@@ -1,6 +1,6 @@
 import "./Navbar.css";
 
-const navbar = () => {
+const Navbar = () => {
   return (
     <nav>
         <h1>NextGenScores</h1>
@@ -15,4 +15,4 @@ const navbar = () => {
     </nav>
   );
 }
-export default navbar;
+export default Navbar;
