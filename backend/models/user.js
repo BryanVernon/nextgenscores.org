@@ -1,12 +1,25 @@
+// backend/models/User.js
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
-const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
-  displayName: String,
-  isAdmin: { type: Boolean, default: false },
-  isTestUser: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
+  favoriteTeam: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-const User = mongoose.model("user", userSchema);
+// instance method to compare password
+UserSchema.methods.comparePassword = async function (candidate) {
+  return bcrypt.compare(candidate, this.passwordHash);
+};
+
+// static helper to create a user with hashed password
+UserSchema.statics.createWithPassword = async function ({ name, email, password, favoriteTeam }) {
+  const saltRounds = 10;
+  const hash = await bcrypt.hash(password, saltRounds);
+  return this.create({ name, email, passwordHash: hash, favoriteTeam });
+};
+
+export default mongoose.model("User", UserSchema);

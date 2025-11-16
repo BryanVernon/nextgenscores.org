@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import cors from "cors";import subscriberRoutes from "./routes/subscriberRoutes.js";
-
+import authRoutes from "./routes/auth.js";
 
 dotenv.config();
 
@@ -124,6 +124,10 @@ app.get("/api/games", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch games from MongoDB" });
   }
 });
+
+
+// Routes
+app.use("/api/auth", authRoutes);
 
 // --- Start server ---
 const PORT = process.env.PORT || 5000;
