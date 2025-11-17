@@ -17,11 +17,14 @@ function sendTokenCookie(res, token) {
 
   res.cookie(cookieName, token, {
     httpOnly: true,
-    secure: isProd,                       // true in prod, false in dev
-    sameSite: isProd ? "none" : "lax",    // none for cross-site prod, lax for localhost
+    secure: isProd,                       // HTTPS only in production
+    sameSite: isProd ? "none" : "lax",    // cross-site cookie allowed in prod
+    domain: isProd ? "nextgenscores.org" : "localhost",  // 🔥 THIS IS THE FIX
+    path: "/",                             // send to all routes
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
+
 
 
 
