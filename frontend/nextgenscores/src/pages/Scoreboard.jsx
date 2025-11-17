@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react'
 import "../App.css";
 
 export default function App() {
-  const API_URL = 'https://nextgenscores-org.onrender.com/api/games'
+  const API_URL = window.location.hostname === "localhost"
+    ? "http://localhost:3002/api/games"
+    : "https://nextgenscores-org.onrender.com/api/games";
 
   const [games, setGames] = useState([])
   const [filteredGames, setFilteredGames] = useState([])
@@ -10,6 +12,8 @@ export default function App() {
   const [weeks, setWeeks] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [hasLoaded, setHasLoaded] = useState(false);
+
 
   const [currentWeek, setCurrentWeek] = useState(0)
   const [conference, setConference] = useState('SEC')
@@ -27,6 +31,7 @@ export default function App() {
         const data = await res.json()
         if (ignore) return
         setGames(data)
+        setHasLoaded(true)
 
         // Get unique weeks from API
         const uniqueWeeks = Array.from(new Set(data.map(g => g.week))).sort((a,b)=>a-b)
@@ -113,21 +118,23 @@ export default function App() {
       {loading && <div className="text-center py-8">Loading games...</div>}
       {error && <div className="text-red-600">{error}</div>}
 
-      {!loading && !error && (
-        <>
-          {sortedGames.length === 0 && (
-            <div className="text-center">No games found for this selection.</div>
-          )}
-          <ul>
-            {sortedGames.map(game => (
-              <li key={game._id || game.id} className="game-card">
-                <GameCard game={game} />
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </div>
+        {!loading && !error && (
+          <>
+            {/* FIX: only show message if we have actually loaded once */}
+            {hasLoaded && sortedGames.length === 0 && (
+              <div className="text-center">No games found for this selection.</div>
+            )}
+
+            <ul>
+              {sortedGames.map(game => (
+                <li key={game._id || game.id} className="game-card">
+                  <GameCard game={game} />
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
     </>
   )
 }
