@@ -127,7 +127,8 @@ app.get("/api/fetch-games", async (req, res) => {
 // --- Route: Get all games from DB ---
 app.get("/api/games", async (req, res) => {
   try {
-    const games = await Game.find().sort({ week: 1 });
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const games = await Game.find({ season: year }).sort({ week: 1 });
     res.json(games);
   } catch (err) {
     console.error(err);
