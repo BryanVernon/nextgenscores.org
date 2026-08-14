@@ -59,45 +59,42 @@ const Game = mongoose.model("game", gameSchema);
 app.get("/", (req, res) => res.send("NextGenScores API is live!"));
 
 // --- Route: Fetch all 2025 games, logos, and betting lines ---
-app.get("/api/fetch-2025-games", async (req, res) => {
+// --- Route: Fetch games for a given season (defaults to current year) ---
+app.get("/api/fetch-games", async (req, res) => {
   try {
-    // Clear existing games
-    await Game.deleteMany({});
-    console.log("🗑️ Cleared all existing games from MongoDB");
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+
+    // Only clear games for that season, not the whole collection
+    await Game.deleteMany({ season: year });
+    console.log(`🗑️ Cleared existing ${year} games from MongoDB`);
 
     const headers = process.env.CFB_API_KEY
       ? { Authorization: `Bearer ${process.env.CFB_API_KEY}` }
       : {};
 
-    // --- Fetch games ---
     const gamesRes = await fetch(
-      "https://api.collegefootballdata.com/games?year=2025",
+      `https://api.collegefootballdata.com/games?year=${year}`,
       { headers }
     );
     const gamesData = await gamesRes.json();
 
-    // --- Fetch teams ---
     const teamsRes = await fetch("https://api.collegefootballdata.com/teams", { headers });
     const teamsData = await teamsRes.json();
 
-    // Create a lookup map: team name => logo URL
     const teamLogoMap = {};
     teamsData.forEach(team => {
       if (team.school && team.logos && team.logos.length > 0) {
-        teamLogoMap[team.school] = team.logos[0]; // take first logo
+        teamLogoMap[team.school] = team.logos[0];
       }
     });
 
-    // --- Fetch betting lines ---
-    const linesRes = await fetch("https://api.collegefootballdata.com/lines?year=2025", { headers });
+    const linesRes = await fetch(`https://api.collegefootballdata.com/lines?year=${year}`, { headers });
     const linesData = await linesRes.json();
-    // Create a map: gameId => lines object
     const linesMap = {};
     linesData.forEach(line => {
       linesMap[line.id] = line.lines && line.lines.length > 0 ? line.lines[0] : {};
     });
 
-    // --- Enrich games ---
     const enrichedGames = gamesData.map(g => ({
       id: g.id,
       season: g.season,
@@ -120,13 +117,12 @@ app.get("/api/fetch-2025-games", async (req, res) => {
       if (err.code !== 11000) console.error(err);
     });
 
-    res.json({ message: `Inserted ${result?.length || 0} games with logos and betting data.` });
+    res.json({ message: `Inserted ${result?.length || 0} games for ${year} with logos and betting data.` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch or store enriched games", details: err.message });
   }
 });
-
 
 // --- Route: Get all games from DB ---
 app.get("/api/games", async (req, res) => {
