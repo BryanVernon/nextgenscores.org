@@ -21,40 +21,85 @@ export default function App() {
 
   // Fetch games
   useEffect(() => {
-    let ignore = false
-    async function load() {
-      setLoading(true)
-      setError(null)
-      try {
-        const res = await fetch(API_URL)
-        if (!res.ok) throw new Error(`API request failed: ${res.status}`)
-        const data = await res.json()
-        if (ignore) return
-        setGames(data)
-        setHasLoaded(true)
+    let ignore = false;
 
-        // Get unique weeks from API
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // --- Try reading from localStorage first ---
+        const cached = localStorage.getItem("gamesCache");
+        let data = cached ? JSON.parse(cached) : null;
+
+        // --- Fetch from API only if no cache ---
+        if (!data) {
+          const res = await fetch(API_URL);
+          if (!res.ok) throw new Error(`API request failed: ${res.status}`);
+          data = await res.json();
+
+          // --- Save to localStorage ---
+          localStorage.setItem("gamesCache", JSON.stringify(data));
+        }
+
+        if (ignore) return;
+
+        setGames(data);
+        setHasLoaded(true);
+
+        // --- Set weeks and current week as before ---
         const uniqueWeeks = Array.from(new Set(data.map(g => g.week))).sort((a,b)=>a-b)
         setWeeks(uniqueWeeks)
 
-        // --- Calculate current week based on season start ---
-        const startOfSeason = new Date('2025-08-23') // replace with actual season start
-        const today = new Date()
-        const daysSinceStart = Math.floor((today - startOfSeason) / (1000*60*60*24))
-        const calcWeek = Math.floor(daysSinceStart / 7) + 1
-        const validWeek = uniqueWeeks.includes(calcWeek) ? calcWeek : Math.max(...uniqueWeeks)
-        setCurrentWeek(validWeek)
-        setWeek(validWeek) // default to current week
+        const today = new Date();
+
+// Find the first game date for each week
+        const weekDates = uniqueWeeks
+          .map(week => {
+            const gamesForWeek = data
+              .filter(g => Number(g.week) === Number(week))
+              .map(g => new Date(g.startDate))
+              .filter(date => !isNaN(date));
+
+            if (gamesForWeek.length === 0) return null;
+
+            return {
+              week,
+              date: new Date(
+                Math.min(...gamesForWeek.map(d => d.getTime()))
+              )
+            };
+          })
+          .filter(Boolean);
+
+        // Find the most recent week that has already started
+        const previousWeek = weekDates
+          .filter(w => w.date <= today)
+          .sort((a, b) => b.date - a.date)[0];
+
+        // Find the next upcoming week
+        const nextWeek = weekDates
+          .filter(w => w.date > today)
+          .sort((a, b) => a.date - b.date)[0];
+
+        // Before the season starts, show the first upcoming week.
+        // During the season, show the most recently started week.
+        const validWeek = previousWeek?.week ?? nextWeek?.week ?? Math.max(...uniqueWeeks);
+
+        setCurrentWeek(validWeek);
+        setWeek(validWeek);
 
       } catch (err) {
-        setError(err.message)
+        setError(err.message);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    load()
-    return () => { ignore = true }
-  }, [])
+
+    load();
+    return () => { ignore = true };
+  }, []);
+
 
   // Filter games based on week and conference
   useEffect(() => {
@@ -167,33 +212,30 @@ function GameCard({ game }) {
   const overUnder = game.overUnder ?? null;
 
   return (
-    
     <>
-      <div className="game-info">
+      <div className="game-card-content">
+        {/* TOP RIGHT — small game info */}
+        <div className="game-meta">
+          <span className="meta-date">{formattedDate}</span> • <span className="meta-time">{formattedTime}</span>
+        </div>
 
-        {/* LEFT SIDE — TEAMS */}
-        <div className="game-details-left">
+        {/* TEAMS FULL WIDTH */}
+        <div className="teams-fullwidth">
           <TeamBlock name={game.awayTeam} score={awayScore} logo={game.awayLogo} />
           <TeamBlock name={game.homeTeam} score={homeScore} logo={game.homeLogo} />
         </div>
 
-        {/* RIGHT SIDE — GAME DETAILS */}
-        <div className="game-details-right">
-          <div className="detail-line">{formattedDate}</div>
-          <div className="detail-line">{formattedTime}</div>
-          <div className="detail-line">{game.venue ?? "TBD"}</div>
-        </div>
+        {/* BOTTOM — BETTING INFO */}
+        {(spread !== null || overUnder !== null) && (
+          <div className="betting-card">
+            {spread !== null && <p>Spread: {spread}</p>}
+            {overUnder !== null && <p>O/U: {overUnder}</p>}
+          </div>
+        )}
       </div>
-
-      {/* BOTTOM — BETTING INFO */}
-      {(spread !== null || overUnder !== null) && (
-        <div className="betting-card">
-          {spread !== null && <p>Spread: {spread}</p>}
-          {overUnder !== null && <p>O/U: {overUnder}</p>}
-        </div>
-      )}
     </>
   );
+
 }
 
 
