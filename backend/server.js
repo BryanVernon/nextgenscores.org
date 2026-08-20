@@ -49,11 +49,58 @@ const gameSchema = new mongoose.Schema({
   homeConference: String,
   homeLogo: String,
   awayLogo: String,
+  homeApRank: Number,
+  awayApRank: Number,
   spread: Number,
   overUnder: Number,
 });
 
 const Game = mongoose.model("game", gameSchema);
+
+function normalizeTeamName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+async function fetchApRankings(year) {
+  const rankingsUrl = new URL("https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings");
+  rankingsUrl.searchParams.set("year", year);
+  rankingsUrl.searchParams.set("region", "us");
+  rankingsUrl.searchParams.set("lang", "en");
+
+  try {
+    const response = await fetch(rankingsUrl);
+    if (!response.ok) throw new Error(`ESPN rankings request failed: ${response.status}`);
+
+    const data = await response.json();
+    const apPoll = data.rankings?.find(ranking => ranking.type === "ap");
+    const ranks = apPoll?.ranks ?? [];
+
+    return new Map(
+      ranks
+        .filter(rank => Number(rank.current) >= 1 && Number(rank.current) <= 25)
+        .flatMap(rank => {
+          const team = rank.team;
+          const names = [team?.location, team?.name, `${team?.location} ${team?.name}`];
+          return names.filter(Boolean).map(name => [normalizeTeamName(name), Number(rank.current)]);
+        })
+    );
+  } catch (error) {
+    console.error("AP rankings error:", error.message);
+    return new Map();
+  }
+}
+
+function addApRanks(game, apRankings) {
+  const rawGame = typeof game.toObject === "function" ? game.toObject() : game;
+  return {
+    ...rawGame,
+    homeApRank: apRankings.get(normalizeTeamName(rawGame.homeTeam)) ?? null,
+    awayApRank: apRankings.get(normalizeTeamName(rawGame.awayTeam)) ?? null,
+  };
+}
 
 // --- Health check ---
 app.get("/", (req, res) => res.send("NextGenScores API is live!"));
@@ -63,6 +110,7 @@ app.get("/", (req, res) => res.send("NextGenScores API is live!"));
 app.get("/api/fetch-games", async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
+    const apRankings = await fetchApRankings(year);
 
     // Only clear games for that season, not the whole collection
     await Game.deleteMany({ season: year });
@@ -109,6 +157,8 @@ app.get("/api/fetch-games", async (req, res) => {
       awayConference: g.awayConference,
       homeLogo: teamLogoMap[g.homeTeam] ?? "",
       awayLogo: teamLogoMap[g.awayTeam] ?? "",
+      homeApRank: apRankings.get(normalizeTeamName(g.homeTeam)) ?? null,
+      awayApRank: apRankings.get(normalizeTeamName(g.awayTeam)) ?? null,
       spread: linesMap[g.id]?.spread ?? null,
       overUnder: linesMap[g.id]?.overUnder ?? null,
     }));
@@ -129,7 +179,8 @@ app.get("/api/games", async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const games = await Game.find({ season: year }).sort({ week: 1 });
-    res.json(games);
+    const apRankings = await fetchApRankings(year);
+    res.json(games.map(game => addApRanks(game, apRankings)));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch games from MongoDB" });

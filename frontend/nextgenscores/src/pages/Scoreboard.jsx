@@ -29,7 +29,7 @@ export default function App() {
 
       try {
         // --- Try reading from localStorage first ---
-        const cached = localStorage.getItem("gamesCache");
+        const cached = localStorage.getItem("gamesCacheV2");
         let data = cached ? JSON.parse(cached) : null;
 
         // --- Fetch from API only if no cache ---
@@ -39,7 +39,7 @@ export default function App() {
           data = await res.json();
 
           // --- Save to localStorage ---
-          localStorage.setItem("gamesCache", JSON.stringify(data));
+          localStorage.setItem("gamesCacheV2", JSON.stringify(data));
         }
 
         if (ignore) return;
@@ -111,7 +111,9 @@ export default function App() {
     }
 
     // Filter by conference
-    if (conference !== 'All') {
+    if (conference === 'AP Top 25') {
+      temp = temp.filter(g => g.homeApRank != null || g.awayApRank != null)
+    } else if (conference !== 'All') {
       temp = temp.filter(g => g.homeConference === conference || g.awayConference === conference)
     }
 
