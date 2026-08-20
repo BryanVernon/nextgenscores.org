@@ -102,6 +102,25 @@ function addApRanks(game, apRankings) {
   };
 }
 
+async function syncApRanks(games, apRankings) {
+  if (games.length === 0) return;
+
+  await Game.bulkWrite(
+    games.map(game => {
+      const homeApRank = apRankings.get(normalizeTeamName(game.homeTeam)) ?? null;
+      const awayApRank = apRankings.get(normalizeTeamName(game.awayTeam)) ?? null;
+
+      return {
+        updateOne: {
+          filter: { _id: game._id },
+          update: { $set: { homeApRank, awayApRank } },
+        },
+      };
+    }),
+    { ordered: false }
+  );
+}
+
 // --- Health check ---
 app.get("/", (req, res) => res.send("NextGenScores API is live!"));
 
@@ -180,6 +199,7 @@ app.get("/api/games", async (req, res) => {
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const games = await Game.find({ season: year }).sort({ week: 1 });
     const apRankings = await fetchApRankings(year);
+    await syncApRanks(games, apRankings);
     res.json(games.map(game => addApRanks(game, apRankings)));
   } catch (err) {
     console.error(err);

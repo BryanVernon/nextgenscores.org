@@ -1,6 +1,7 @@
 import { StrictMode, useContext } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import "./index.css";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 import Layout from "./Layout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
