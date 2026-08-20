@@ -3,7 +3,7 @@ import "../App.css";
 
 export default function App() {
   const API_URL = window.location.hostname === "localhost"
-    ? "http://localhost:3002/api/games"
+    ? "http://localhost:5000/api/games"
     : "https://nextgenscores-org.onrender.com/api/games";
 
   const [games, setGames] = useState([])
@@ -29,8 +29,14 @@ export default function App() {
 
       try {
         // --- Try reading from localStorage first ---
-        const cached = localStorage.getItem("gamesCacheV2");
+        const cached = localStorage.getItem("gamesCacheV3");
         let data = cached ? JSON.parse(cached) : null;
+
+        const hasApRankings = Array.isArray(data) && data.some(game => (
+          game.homeApRank != null || game.awayApRank != null
+        ));
+
+        if (!hasApRankings) data = null;
 
         // --- Fetch from API only if no cache ---
         if (!data) {
@@ -39,7 +45,7 @@ export default function App() {
           data = await res.json();
 
           // --- Save to localStorage ---
-          localStorage.setItem("gamesCacheV2", JSON.stringify(data));
+          localStorage.setItem("gamesCacheV3", JSON.stringify(data));
         }
 
         if (ignore) return;

@@ -2,6 +2,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 68px;
   padding: 16px max(24px, calc((100vw - 1280px) / 2));
   background: #17312b;
   color: white;
@@ -28,12 +29,18 @@
 .nav-links {
   list-style: none;
   display: flex;
+  align-items: center;
   gap: 1.5rem;
   margin: 0;
   padding: 0;
 }
 
+.nav-links li { display: flex; align-items: center; }
+
 .nav-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
   text-decoration: none;
   color: #c2d4ce;
   font-size: 0.86rem;
@@ -43,6 +50,9 @@
 
 .nav-links a:hover { color: #7ce0b4; }
 .logout-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
   padding: 8px 12px;
   border: 1px solid rgba(194, 212, 206, 0.4);
   border-radius: 6px;
