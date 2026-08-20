@@ -7,7 +7,9 @@ export default function PickEmPage() {
 
   return (
     <div className="pickem-page">
-      <h1>PickEm Pools</h1>
+      <p className="eyebrow">Compete with your people</p>
+      <h1>Pick 'Em <span>Pools</span></h1>
+      <p className="pickem-intro">Make your calls, track the field, and see who knows college football best.</p>
 
       {view === "home" && (
         <div className="home-buttons">
@@ -32,7 +34,7 @@ function JoinPool({ goBack }) {
   return (
     <div className="pickem-content">
       <button className="btn back-btn" onClick={goBack}>← Back</button>
-      <h2>Available Pools</h2>
+      <h2>Available pools</h2>
       <table className="pools-table">
         <thead>
           <tr>
@@ -80,7 +82,7 @@ function CreatePool({ goBack }) {
   return (
     <div className="pickem-content">
       <button className="btn back-btn" onClick={goBack}>← Back</button>
-      <h2>Create a New Pool</h2>
+      <h2>Create a new pool</h2>
       <form className="create-pool-form" onSubmit={handleSubmit}>
         <label>
           Pool Type:

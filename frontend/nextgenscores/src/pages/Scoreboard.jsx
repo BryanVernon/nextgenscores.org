@@ -135,12 +135,27 @@ export default function App() {
       
     
 
-    <div className="game-list">
-      <header className="filter-container">
-        <h1>College Football Schedule</h1>
+    <div className="schedule-page">
+      <header className="schedule-header">
+        <div>
+          <p className="eyebrow">Saturday is on the way</p>
+          <h1>College Football <span>Schedule</span></h1>
+          <p className="schedule-intro">Every matchup, kickoff, and line in one place.</p>
+        </div>
+        <div className="schedule-count">
+          <strong>{sortedGames.length}</strong>
+          <span>matchups</span>
+        </div>
+      </header>
+
+      <div className="filter-container">
+        <div className="filter-heading">
+          <span className="filter-kicker">Browse the slate</span>
+          <span className="filter-current">{conference === 'All' ? 'All conferences' : conference}</span>
+        </div>
         <div className="filter">
-          <label>Week</label>
-          <select value={week} onChange={handleWeekChange}>
+          <label htmlFor="week-filter">Week</label>
+          <select id="week-filter" value={week} onChange={handleWeekChange}>
             <option value="all">All</option>
             {weeks.map(w => (
               <option key={w} value={w}>
@@ -149,28 +164,27 @@ export default function App() {
             ))}
           </select>
 
-          <label>Conference</label>
-          <select value={conference} onChange={handleConferenceChange}>
+          <label htmlFor="conference-filter">Conference</label>
+          <select id="conference-filter" value={conference} onChange={handleConferenceChange}>
             <option value="All">All</option>
             {conferences.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </div>
-        
-      </header>
+      </div>
 
-      {loading && <div className="text-center py-8">Loading games...</div>}
-      {error && <div className="text-red-600">{error}</div>}
+      {loading && <div className="schedule-message">Loading games...</div>}
+      {error && <div className="schedule-message error-message">{error}</div>}
 
         {!loading && !error && (
           <>
             {/* FIX: only show message if we have actually loaded once */}
             {hasLoaded && sortedGames.length === 0 && (
-              <div className="text-center">No games found for this selection.</div>
+              <div className="schedule-message">No games found for this selection.</div>
             )}
 
-            <ul>
+            <ul className="games-grid">
               {sortedGames.map(game => (
                 <li key={game._id || game.id} className="game-card">
                   <GameCard game={game} />

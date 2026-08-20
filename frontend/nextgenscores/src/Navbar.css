@@ -1,27 +1,31 @@
-/* Navbar container */
-nav {
+.site-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(90deg, #4f46e5, #6366f1); /* purple gradient */
-  padding: 1rem 2rem;
+  padding: 16px max(24px, calc((100vw - 1280px) / 2));
+  background: #17312b;
   color: white;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 20px rgba(23, 49, 43, 0.14);
   position: sticky;
   top: 0;
   z-index: 100;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Logo / Site title */
-nav h1 {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin: 0;
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: -0.04em;
 }
+.brand-mark span span { color: #7ce0b4; }
+.brand-dot { width: 12px; height: 12px; border-radius: 50%; background: #7ce0b4; box-shadow: 0 0 0 5px rgba(124, 224, 180, 0.14); }
 
-/* Nav links */
-nav ul {
+.nav-links {
   list-style: none;
   display: flex;
   gap: 1.5rem;
@@ -29,28 +33,28 @@ nav ul {
   padding: 0;
 }
 
-nav ul li a {
+.nav-links a {
   text-decoration: none;
-  color: white;
+  color: #c2d4ce;
+  font-size: 0.86rem;
   font-weight: 500;
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition: color 0.2s ease;
 }
 
-nav ul li a:hover {
-  color: #facc15; /* amber/yellow highlight */
-  transform: scale(1.05);
+.nav-links a:hover { color: #7ce0b4; }
+.logout-button {
+  padding: 8px 12px;
+  border: 1px solid rgba(194, 212, 206, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
 }
+.logout-button:hover { border-color: #7ce0b4; color: #7ce0b4; }
 
-/* Responsive for smaller screens */
 @media (max-width: 768px) {
-  nav {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  nav ul {
-    flex-direction: column;
-    gap: 0.8rem;
-    margin-top: 0.5rem;
-  }
+  .site-nav { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .nav-links { gap: 12px; flex-wrap: wrap; }
 }

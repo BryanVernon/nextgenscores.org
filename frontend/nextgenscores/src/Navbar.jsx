@@ -7,16 +7,19 @@ const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
 
   return (
-    <nav>
-      <h1>NextGenScores</h1>
-      <ul>
+    <nav className="site-nav">
+      <Link className="brand-mark" to="/">
+        <span className="brand-dot" aria-hidden="true" />
+        <span>NextGen<span>Scores</span></span>
+      </Link>
+      <ul className="nav-links">
         {user ? (
           <>
             <li><Link to="/">Dashboard</Link></li>
             <li><Link to="/schedule">CFB Schedule</Link></li>
             <li><Link to="/pickem">Pick 'Em</Link></li>
             <li><Link to="/contact">Leaderboard</Link></li>
-            <li><button onClick={logout}>Logout</button></li>
+            <li><button className="logout-button" onClick={logout}>Log out</button></li>
           </>
         ) : null}
       </ul>

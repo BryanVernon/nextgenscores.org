@@ -4,6 +4,7 @@ import { useContext, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import axios from "../../api";
 import { useNavigate, Link } from "react-router-dom";
+import "./Auth.css";
 
 export default function Signup() {
   const { register, handleSubmit } = useForm();
@@ -22,8 +23,10 @@ export default function Signup() {
   };
 
   return (
-    <div className="auth-form">
-      <h1>Sign Up</h1>
+    <div className="auth-page">
+      <div className="auth-panel">
+      <p className="eyebrow">Start your season</p>
+      <h1>Join <span>NextGenScores</span></h1>
       <form onSubmit={handleSubmit(onSubmit)}>
         <input
           {...register("name", { required: true })}
@@ -42,14 +45,15 @@ export default function Signup() {
           {...register("favoriteTeam")}
           placeholder="Favorite Team (optional)"
         />
-        <button type="submit">Sign Up</button>
+        <button className="auth-submit" type="submit">Create account</button>
       </form>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="auth-error">{error}</p>}
 
-      <p style={{ marginTop: "1rem" }}>
+      <p className="auth-switch">
         Already have an account? <Link to="/login">Log in</Link>
       </p>
+      </div>
     </div>
   );
 }
