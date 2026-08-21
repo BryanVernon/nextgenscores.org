@@ -16,7 +16,7 @@ export default function App() {
 
 
   const [currentWeek, setCurrentWeek] = useState(0)
-  const [conference, setConference] = useState('SEC')
+  const [conference, setConference] = useState('AP Top 25')
   const conferences = ['AP Top 25', 'SEC', 'ACC', 'Big 12', 'Big Ten', 'Mountain West', 'Pac-12', 'FBS Independents', 'Mid-American','Sun Belt', 'Ivy', 'Patriot']
 
   // Fetch games
