@@ -4,6 +4,18 @@ import { AuthContext } from "../context/AuthContext";
 
 const API_BASE = window.location.hostname === "localhost" ? "http://localhost:3002" : "https://nextgenscores-org.onrender.com";
 
+async function readApiResponse(response) {
+  const text = await response.text();
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = { message: "The backend returned an HTML error page. It may need to be redeployed." };
+  }
+  if (!response.ok) throw new Error(body.message || body.error || "Request failed");
+  return body;
+}
+
 export default function PickEmPage() {
   const [view, setView] = useState("home");
   const [pool, setPool] = useState(null);
@@ -85,12 +97,12 @@ function CreatePool({ goBack, openPicks }) {
 
 function WeeklyPicks({ pool, goBack }) {
   const [data, setData] = useState(null); const [choices, setChoices] = useState({}); const [leaderboard, setLeaderboard] = useState(null); const [error, setError] = useState(null); const [saving, setSaving] = useState(false); const [picksSaved, setPicksSaved] = useState(false);
-  useEffect(() => { fetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { credentials: "include" }).then(async res => { const body = await res.json(); if (!res.ok) throw new Error(body.message || "Unable to load picks"); return body; }).then(body => { setData(body); setChoices(body.picks || {}); setPicksSaved(body.games.length > 0 && body.games.every(game => body.picks?.[game.id])); }).catch(err => setError(err.message)); }, [pool.id]);
-  useEffect(() => { fetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { credentials: "include" }).then(res => res.ok ? res.json() : null).then(setLeaderboard).catch(() => {}); }, [pool.id]);
+  useEffect(() => { fetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { credentials: "include" }).then(readApiResponse).then(body => { setData(body); setChoices(body.picks || {}); setPicksSaved(body.games.length > 0 && body.games.every(game => body.picks?.[game.id])); }).catch(err => setError(err.message)); }, [pool.id]);
+  useEffect(() => { fetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { credentials: "include" }).then(readApiResponse).then(setLeaderboard).catch(() => {}); }, [pool.id]);
   async function save() {
     if (!data) return; if (data.games.some(game => !choices[game.id])) { setError("Choose a winner for every game before saving."); return; }
     setSaving(true); setError(null);
-    try { const res = await fetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ picks: data.games.map(game => ({ gameId: game.id, pick: choices[game.id] })) }) }); const body = await res.json(); if (!res.ok) throw new Error(body.message || "Failed to save picks"); setPicksSaved(true); const standings = await fetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { credentials: "include" }); if (standings.ok) setLeaderboard(await standings.json()); }
+    try { const res = await fetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ picks: data.games.map(game => ({ gameId: game.id, pick: choices[game.id] })) }) }); await readApiResponse(res); setPicksSaved(true); const standings = await fetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { credentials: "include" }); if (standings.ok) setLeaderboard(await readApiResponse(standings)); }
     catch (err) { setError(err.message); } finally { setSaving(false); }
   }
   return <div className="pickem-content"><button className="btn back-btn" onClick={goBack}>← Back</button>{error && <p className="error-message">{error}</p>}{!data && !error && <p>Loading this week’s games...</p>}

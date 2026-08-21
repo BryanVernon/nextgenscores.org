@@ -71,6 +71,63 @@ router.get("/mine", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/:id/picks/current", requireAuth, async (req, res) => {
+  try {
+    const pool = await Pool.findById(req.params.id);
+    if (!pool) return res.status(404).json({ message: "Pool not found" });
+    if (!pool.participants.some(participant => participant.toString() === req.userId)) {
+      return res.status(403).json({ message: "Join this pool to view its picks" });
+    }
+
+    const season = Number(req.query.year) || new Date().getFullYear();
+    const games = await getGameModel().find({ season }).sort({ startDate: 1 });
+    const week = getCurrentWeek(games);
+    const weekGames = games.filter(game => Number(game.week) === Number(week));
+    const picks = await Pick.find({ poolId: pool._id, userId: req.userId, season, week });
+
+    res.json({
+      pool: { id: pool._id, name: pool.name, conference: pool.conference, scoringType: pool.scoringType },
+      season,
+      week,
+      games: weekGames.map(game => ({ id: game.id, homeTeam: game.homeTeam, awayTeam: game.awayTeam, startDate: game.startDate })),
+      picks: Object.fromEntries(picks.map(pick => [pick.gameId, pick.pick])),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load current picks" });
+  }
+});
+
+router.put("/:id/picks/current", requireAuth, async (req, res) => {
+  try {
+    const pool = await Pool.findById(req.params.id);
+    if (!pool) return res.status(404).json({ message: "Pool not found" });
+    if (!pool.participants.some(participant => participant.toString() === req.userId)) {
+      return res.status(403).json({ message: "Join this pool to save picks" });
+    }
+
+    const season = Number(req.query.year) || new Date().getFullYear();
+    const games = await getGameModel().find({ season });
+    const week = getCurrentWeek(games);
+    const validGameIds = new Set(games.filter(game => Number(game.week) === Number(week)).map(game => Number(game.id)));
+    const operations = (Array.isArray(req.body.picks) ? req.body.picks : [])
+      .filter(item => validGameIds.has(Number(item.gameId)) && ["home", "away"].includes(item.pick))
+      .map(item => ({
+        updateOne: {
+          filter: { poolId: pool._id, userId: req.userId, gameId: Number(item.gameId), week, season },
+          update: { $set: { pick: item.pick } },
+          upsert: true,
+        },
+      }));
+
+    if (operations.length > 0) await Pick.bulkWrite(operations, { ordered: false });
+    res.json({ message: "Picks saved", week, season });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save picks" });
+  }
+});
+
 router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
   try {
     const pool = await Pool.findById(req.params.id).populate("participants", "name");
