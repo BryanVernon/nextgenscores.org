@@ -1,22 +1,34 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
 
 const API_BASE = window.location.hostname === "localhost"
   ? "http://localhost:5000"
   : "https://nextgenscores-org.onrender.com";
 
-const ALL_TEAMS = ["Ohio State", "Oregon", "Texas", "Alabama", "Georgia", "Michigan"]; // swap for a real team list/endpoint later
-
 export default function Settings() {
   const { user, setUser } = useContext(AuthContext);
+  const [teamsByConference, setTeamsByConference] = useState({});
+  const [conference, setConference] = useState("");
+  const [teamChoice, setTeamChoice] = useState("");
   const [selected, setSelected] = useState(user?.favoriteTeams || []);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
-  function toggleTeam(team) {
-    setSelected(prev =>
-      prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team]
-    );
+  useEffect(() => {
+    fetch(`${API_BASE}/api/teams-by-conference`)
+      .then(res => res.json())
+      .then(setTeamsByConference)
+      .catch(() => setMessage("Couldn't load team list."));
+  }, []);
+
+  function addTeam() {
+    if (!teamChoice || selected.includes(teamChoice)) return;
+    setSelected(prev => [...prev, teamChoice]);
+    setTeamChoice("");
+  }
+
+  function removeTeam(team) {
+    setSelected(prev => prev.filter(t => t !== team));
   }
 
   async function handleSave() {
@@ -29,16 +41,19 @@ export default function Settings() {
         credentials: "include",
         body: JSON.stringify({ favoriteTeams: selected }),
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setUser(data.user);
       setMessage("Saved!");
-    } catch (err) {
+    } catch {
       setMessage("Something went wrong. Try again.");
     } finally {
       setSaving(false);
     }
   }
+
+  const conferenceOptions = Object.keys(teamsByConference).sort();
+  const teamOptions = conference ? teamsByConference[conference] || [] : [];
 
   return (
     <div className="settings-page">
@@ -47,20 +62,31 @@ export default function Settings() {
 
       <section className="settings-section">
         <h2>Favorite teams</h2>
-        <p>Pick as many as you'd like — they'll show up on your dashboard.</p>
+        <p>Pick a conference, then a team, and add as many as you'd like.</p>
 
-        <div className="team-checklist">
-          {ALL_TEAMS.map(team => (
-            <label key={team} className="team-checkbox">
-              <input
-                type="checkbox"
-                checked={selected.includes(team)}
-                onChange={() => toggleTeam(team)}
-              />
-              {team}
-            </label>
-          ))}
+        <div className="team-picker">
+          <select value={conference} onChange={e => { setConference(e.target.value); setTeamChoice(""); }}>
+            <option value="">Select conference...</option>
+            {conferenceOptions.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          <select value={teamChoice} onChange={e => setTeamChoice(e.target.value)} disabled={!conference}>
+            <option value="">Select team...</option>
+            {teamOptions.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+
+          <button className="btn" type="button" onClick={addTeam} disabled={!teamChoice}>Add</button>
         </div>
+
+        {selected.length > 0 && (
+          <ul className="selected-teams">
+            {selected.map(team => (
+              <li key={team}>
+                {team} <button type="button" onClick={() => removeTeam(team)}>×</button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <button className="btn" onClick={handleSave} disabled={saving}>
           {saving ? "Saving..." : "Save changes"}

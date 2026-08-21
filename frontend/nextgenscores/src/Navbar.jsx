@@ -18,7 +18,8 @@ const Navbar = () => {
             <li><Link to="/">Dashboard</Link></li>
             <li><Link to="/schedule">CFB Schedule</Link></li>
             <li><Link to="/pickem">Pick 'Em</Link></li>
-            <li><Link to="/contact">Leaderboard</Link></li>
+            <li><Link to="/leaderboard">Leaderboard</Link></li>
+            <li><Link to="/settings">Settings</Link></li>
             <li><button className="logout-button" onClick={logout}>Log out</button></li>
           </>
         ) : null}

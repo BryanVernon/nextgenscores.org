@@ -217,6 +217,77 @@ app.get("/api/games", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch games from MongoDB" });
   }
 });
+// --- Route: Team summary for dashboard (record, last game, next game) ---
+app.get("/api/team-summary", async (req, res) => {
+  try {
+    const { team, year } = req.query;
+    if (!team) return res.status(400).json({ error: "team is required" });
+
+    const season = parseInt(year) || new Date().getFullYear();
+    const games = await Game.find({
+      season,
+      $or: [{ homeTeam: team }, { awayTeam: team }],
+    }).sort({ startDate: 1 });
+
+    const now = new Date();
+    let wins = 0, losses = 0;
+    const played = [];
+    const upcoming = [];
+
+    games.forEach(g => {
+      const isHome = g.homeTeam === team;
+      const teamScore = isHome ? g.homePoints : g.awayPoints;
+      const oppScore = isHome ? g.awayPoints : g.homePoints;
+      const opponent = isHome ? g.awayTeam : g.homeTeam;
+
+      if (teamScore != null && oppScore != null) {
+        if (teamScore > oppScore) wins++;
+        else if (teamScore < oppScore) losses++;
+        played.push({ opponent, teamScore, oppScore, isHome, startDate: g.startDate });
+      } else if (new Date(g.startDate) >= now) {
+        upcoming.push({ opponent, isHome, startDate: g.startDate });
+      }
+    });
+
+    res.json({
+      team,
+      record: { wins, losses },
+      lastGame: played.length ? played[played.length - 1] : null,
+      nextGame: upcoming.length ? upcoming[0] : null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load team summary" });
+  }
+});
+// --- Route: Teams grouped by conference (for dropdowns) ---
+app.get("/api/teams-by-conference", async (req, res) => {
+  try {
+    const season = parseInt(req.query.year) || new Date().getFullYear();
+    const games = await Game.find({ season });
+
+    const map = {};
+    games.forEach(g => {
+      if (g.homeConference && g.homeTeam) {
+        map[g.homeConference] = map[g.homeConference] || new Set();
+        map[g.homeConference].add(g.homeTeam);
+      }
+      if (g.awayConference && g.awayTeam) {
+        map[g.awayConference] = map[g.awayConference] || new Set();
+        map[g.awayConference].add(g.awayTeam);
+      }
+    });
+
+    const result = Object.fromEntries(
+      Object.entries(map).map(([conf, teams]) => [conf, Array.from(teams).sort()])
+    );
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load teams by conference" });
+  }
+});
 app.use("/api/pools", poolRoutes);
 
 // Routes
