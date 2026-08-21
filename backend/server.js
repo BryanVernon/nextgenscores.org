@@ -65,34 +65,38 @@ function normalizeTeamName(name) {
 }
 
 async function fetchApRankings(year) {
-  const rankingsUrl = new URL("https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings");
-  rankingsUrl.searchParams.set("year", year);
-  rankingsUrl.searchParams.set("region", "us");
-  rankingsUrl.searchParams.set("lang", "en");
-
   try {
-    const response = await fetch(rankingsUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; NextGenScoresBot/1.0)",
-        Accept: "application/json",
-      },
-    });
-    if (!response.ok) throw new Error(`ESPN rankings request failed: ${response.status}`);
+    const headers = process.env.CFB_API_KEY
+      ? { Authorization: `Bearer ${process.env.CFB_API_KEY}` }
+      : {};
+
+    const response = await fetch(
+      `https://api.collegefootballdata.com/rankings?year=${year}`,
+      { headers }
+    );
+    if (!response.ok) throw new Error(`CFBD rankings request failed: ${response.status}`);
 
     const data = await response.json();
-    const apPoll = data.rankings?.find(ranking => ranking.type === "ap");
-    const ranks = apPoll?.ranks ?? [];
 
-    console.log(`AP rankings fetched: ${ranks.length} ranked teams for ${year}`);
+    // Data is an array of { season, week, polls: [ { poll: "AP Top 25", ranks: [...] } ] }
+    // Grab the most recent week that has an AP poll
+    const apWeeks = data
+      .map(w => ({
+        week: w.week,
+        apPoll: w.polls?.find(p => p.poll === "AP Top 25"),
+      }))
+      .filter(w => w.apPoll);
+
+    if (apWeeks.length === 0) {
+      console.log(`No AP poll data found for ${year}`);
+      return new Map();
+    }
+
+    const latest = apWeeks[apWeeks.length - 1];
+    console.log(`AP rankings fetched: week ${latest.week}, ${latest.apPoll.ranks.length} ranked teams for ${year}`);
 
     return new Map(
-      ranks
-        .filter(rank => Number(rank.current) >= 1 && Number(rank.current) <= 25)
-        .flatMap(rank => {
-          const team = rank.team;
-          const names = [team?.location, team?.name, `${team?.location} ${team?.name}`];
-          return names.filter(Boolean).map(name => [normalizeTeamName(name), Number(rank.current)]);
-        })
+      latest.apPoll.ranks.map(rank => [normalizeTeamName(rank.school), Number(rank.rank)])
     );
   } catch (error) {
     console.error("AP rankings error:", error.message);
