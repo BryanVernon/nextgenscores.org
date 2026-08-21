@@ -11,6 +11,7 @@ import Signup from "./components/auth/Signup.jsx";
 import Login from "./components/auth/Login.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Settings from "./pages/Settings.jsx";
+import Leaderboard from "./pages/Leaderboard.jsx";
 // Landing component must use AuthContext
 function Landing() {
   const { user, loading } = useContext(AuthContext);
@@ -39,6 +40,7 @@ const router = createBrowserRouter([
       { path: "schedule", element: <Scoreboard /> },
       { path: "*", element: <div>404 Not Found</div> },
       { path: "settings", element: <Settings /> },
+      { path: "leaderboard", element: <Leaderboard /> },
     ],
   }
 

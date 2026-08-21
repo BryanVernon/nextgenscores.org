@@ -1,8 +1,32 @@
 import express from "express";
+import mongoose from "mongoose";
 import Pool from "../models/pool.js";
+import Pick from "../models/pick.js";
 import requireAuth from "../middleware/requireAuth.js";
 
 const router = express.Router();
+
+function getGameModel() {
+  return mongoose.model("game");
+}
+
+function getCurrentWeek(games) {
+  const now = Date.now();
+  const weeks = [...new Set(games.map(game => Number(game.week)).filter(Number.isFinite))]
+    .map(week => ({
+      week,
+      start: Math.min(...games
+        .filter(game => Number(game.week) === week)
+        .map(game => new Date(game.startDate).getTime())
+        .filter(Number.isFinite)),
+    }))
+    .filter(item => Number.isFinite(item.start));
+
+  return weeks
+    .filter(item => item.start <= now)
+    .sort((a, b) => b.start - a.start)[0]?.week
+    ?? weeks.sort((a, b) => a.start - b.start)[0]?.week;
+}
 
 // GET /api/pools — list all public pools
 router.get("/", async (req, res) => {
@@ -44,6 +68,70 @@ router.get("/mine", requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to load your pools" });
+  }
+});
+
+router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
+  try {
+    const pool = await Pool.findById(req.params.id).populate("participants", "name");
+    if (!pool) return res.status(404).json({ message: "Pool not found" });
+
+    const isParticipant = pool.participants.some(participant => participant._id.toString() === req.userId);
+    if (!isParticipant) return res.status(403).json({ message: "Join this pool to view its leaderboard" });
+
+    const season = Number(req.query.year) || new Date().getFullYear();
+    const games = await getGameModel().find({ season }).sort({ startDate: 1 });
+    const week = getCurrentWeek(games);
+    const weekGames = games.filter(game => Number(game.week) === Number(week));
+    const gameIds = new Set(weekGames.map(game => Number(game.id)));
+    const picks = await Pick.find({ poolId: pool._id, season, week });
+    const picksByUser = new Map();
+
+    picks.forEach(pick => {
+      if (!picksByUser.has(pick.userId.toString())) picksByUser.set(pick.userId.toString(), new Map());
+      picksByUser.get(pick.userId.toString()).set(Number(pick.gameId), pick.pick);
+    });
+
+    const completedGames = weekGames.filter(game => game.homePoints != null && game.awayPoints != null);
+    const leaderboard = pool.participants.map(participant => {
+      const userPicks = picksByUser.get(participant._id.toString()) || new Map();
+      let correct = 0;
+
+      completedGames.forEach(game => {
+        const pick = userPicks.get(Number(game.id));
+        if (!pick) return;
+
+        const homeWon = Number(game.homePoints) > Number(game.awayPoints);
+        const awayWon = Number(game.awayPoints) > Number(game.homePoints);
+        if ((pick === "home" && homeWon) || (pick === "away" && awayWon)) correct++;
+      });
+
+      return {
+        userId: participant._id,
+        name: participant.name,
+        correct,
+        picks: [...userPicks.keys()].filter(gameId => gameIds.has(gameId)).length,
+      };
+    }).sort((a, b) => b.correct - a.correct || b.picks - a.picks || a.name.localeCompare(b.name));
+
+    let previousScore = null;
+    leaderboard.forEach((entry, index) => {
+      if (entry.correct !== previousScore) entry.rank = index + 1;
+      else entry.rank = leaderboard[index - 1].rank;
+      previousScore = entry.correct;
+    });
+
+    res.json({
+      pool: { id: pool._id, name: pool.name, conference: pool.conference, scoringType: pool.scoringType },
+      season,
+      week,
+      completedGames: completedGames.length,
+      totalGames: weekGames.length,
+      leaderboard,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load leaderboard" });
   }
 });
 

@@ -1,0 +1,29 @@
+.leaderboard-page { width: min(900px, 100%); margin: 0 auto; padding: 52px 0 72px; }
+.leaderboard-page h1 { margin: 0; color: var(--ink); font-family: 'Space Grotesk', sans-serif; font-size: clamp(2.4rem, 5vw, 4rem); letter-spacing: -0.06em; line-height: .98; }
+.leaderboard-page h1 span { color: var(--accent); }
+.leaderboard-intro { max-width: 540px; margin: 16px 0 30px; color: var(--muted); line-height: 1.6; }
+.leaderboard-selector { display: grid; gap: 8px; max-width: 420px; margin-bottom: 20px; }
+.leaderboard-selector label { color: var(--ink); font-size: .78rem; font-weight: 800; }
+.leaderboard-selector select { padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; }
+.leaderboard-board { padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 14px 34px rgba(24, 44, 39, .06); }
+.leaderboard-board-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.leaderboard-board-header .eyebrow { margin-bottom: 5px; }
+.leaderboard-board h2 { margin: 0; color: var(--ink); font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; letter-spacing: -.04em; }
+.leaderboard-board-header > span { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.leaderboard-rows { display: grid; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+.leaderboard-row { display: grid; grid-template-columns: 44px 1fr auto auto; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--muted); }
+.leaderboard-row strong { color: var(--ink); }
+.leaderboard-row small { min-width: 52px; color: var(--muted); font-size: .75rem; text-align: right; }
+.leader-row { border-color: #bde2cf; background: #eff9f4; }
+.leaderboard-rank { color: var(--accent); font-size: .82rem; font-weight: 800; }
+.leaderboard-status, .leaderboard-empty, .leaderboard-error { padding: 26px 18px; color: var(--muted); text-align: center; }
+.leaderboard-empty { border: 1px dashed #b9c8c2; border-radius: 12px; }
+.leaderboard-error { margin-top: 16px; border-radius: 8px; background: #fff2f0; color: #b42318; font-weight: 700; }
+
+@media (max-width: 650px) {
+  .leaderboard-page { padding: 30px 0 48px; }
+  .leaderboard-board { padding: 18px 14px; }
+  .leaderboard-board-header { align-items: flex-start; flex-direction: column; }
+  .leaderboard-row { grid-template-columns: 36px 1fr auto; }
+  .leaderboard-row small { grid-column: 2 / -1; text-align: left; }
+}
