@@ -5,7 +5,7 @@ import fetch from "node-fetch";
 import cors from "cors";import subscriberRoutes from "./routes/subscriberRoutes.js";
 import authRoutes from "./routes/auth.js";
 import cookieParser from "cookie-parser";
-
+import poolRoutes from "./routes/pools.js";
 
 dotenv.config();
 
@@ -217,7 +217,7 @@ app.get("/api/games", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch games from MongoDB" });
   }
 });
-
+app.use("/api/pools", poolRoutes);
 
 // Routes
 app.use("/api/auth", authRoutes);

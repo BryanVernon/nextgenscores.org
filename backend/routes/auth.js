@@ -29,7 +29,7 @@ function sendTokenCookie(res, token) {
 // POST /api/auth/signup
 router.post("/signup", async (req, res) => {
   try {
-    const { name, email, password, favoriteTeam } = req.body;
+    const { name, email, password, favoriteTeams } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
     }
@@ -37,12 +37,12 @@ router.post("/signup", async (req, res) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ message: "Email already in use" });
 
-    const user = await User.createWithPassword({ name, email, password, favoriteTeam });
+    const user = await User.createWithPassword({ name, email, password, favoriteTeams });
     const token = signToken(user._id);
     sendTokenCookie(res, token);
 
     // return user object (omit passwordHash)
-    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeam: user.favoriteTeam };
+    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeams: user.favoriteTeams };
     res.status(201).json({ user: safeUser });
   } catch (err) {
     console.error("Signup error", err);
@@ -65,7 +65,7 @@ router.post("/login", async (req, res) => {
     const token = signToken(user._id);
     sendTokenCookie(res, token);
 
-    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeam: user.favoriteTeam };
+    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeams: user.favoriteTeams };
     res.json({ user: safeUser });
   } catch (err) {
     console.error("Login error", err);
@@ -96,11 +96,37 @@ router.get("/me", async (req, res) => {
     const user = await User.findById(payload.sub);
     if (!user) return res.status(401).json({ message: "Not authenticated" });
 
-    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeam: user.favoriteTeam };
+    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeams: user.favoriteTeams };
     res.json({ user: safeUser });
   } catch (err) {
     console.error("Me error", err);
     res.status(401).json({ message: "Not authenticated" });
+  }
+});
+
+router.put("/favorite-teams", async (req, res) => {
+  try {
+    const cookieName = process.env.COOKIE_NAME || "ngs_token";
+    const token = req.cookies?.[cookieName];
+    if (!token) return res.status(401).json({ message: "Not authenticated" });
+
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const { favoriteTeams } = req.body;
+    if (!Array.isArray(favoriteTeams)) {
+      return res.status(400).json({ message: "favoriteTeams must be an array" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      payload.sub,
+      { favoriteTeams },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ user: { id: user._id, name: user.name, email: user.email, favoriteTeams: user.favoriteTeams } });
+  } catch (err) {
+    console.error("Update favorite teams error", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

@@ -34,5 +34,46 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: "Failed to load games" });
   }
 });
+router.get("/team-summary", async (req, res) => {
+  try {
+    const { team, year } = req.query;
+    if (!team) return res.status(400).json({ error: "team is required" });
 
+    const season = parseInt(year) || new Date().getFullYear();
+    const games = await Game.find({
+      season,
+      $or: [{ homeTeam: team }, { awayTeam: team }],
+    }).sort({ startDate: 1 });
+
+    const now = new Date();
+    let wins = 0, losses = 0;
+    const played = [];
+    const upcoming = [];
+
+    games.forEach(g => {
+      const isHome = g.homeTeam === team;
+      const teamScore = isHome ? g.homePoints : g.awayPoints;
+      const oppScore = isHome ? g.awayPoints : g.homePoints;
+      const opponent = isHome ? g.awayTeam : g.homeTeam;
+
+      if (teamScore != null && oppScore != null) {
+        if (teamScore > oppScore) wins++;
+        else if (teamScore < oppScore) losses++;
+        played.push({ opponent, teamScore, oppScore, isHome, startDate: g.startDate });
+      } else if (new Date(g.startDate) >= now) {
+        upcoming.push({ opponent, isHome, startDate: g.startDate });
+      }
+    });
+
+    res.json({
+      team,
+      record: { wins, losses },
+      lastGame: played.length ? played[played.length - 1] : null,
+      nextGame: upcoming.length ? upcoming[0] : null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load team summary" });
+  }
+});
 export default router;

@@ -1,7 +1,10 @@
 // PickEmPage.jsx
 import React, { useState } from "react";
 import "./PickEmPage.css"; // new CSS file for styling
-
+import { useEffect } from "react";
+const API_BASE = window.location.hostname === "localhost"
+  ? "http://localhost:5000"
+  : "https://nextgenscores-org.onrender.com";
 export default function PickEmPage() {
   const [view, setView] = useState("home"); // home | create | join
 
@@ -26,10 +29,34 @@ export default function PickEmPage() {
 
 // ---------------- Join Pool ----------------
 function JoinPool({ goBack }) {
-  const [pools] = useState([
-    { id: 1, name: "SEC Week 1 Pool", type: "Spread", participants: 5, limit: 10, visibility: "Public" },
-    { id: 2, name: "ACC Friends Pool", type: "Standard", participants: 3, limit: null, visibility: "Private" },
-  ]);
+  const [pools, setPools] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [joiningId, setJoiningId] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/pools`)
+      .then(res => res.json())
+      .then(setPools)
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleJoin(id) {
+    setJoiningId(id);
+    try {
+      const res = await fetch(`${API_BASE}/api/pools/${id}/join`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error();
+      alert("Joined!"); // swap for a nicer toast later
+    } catch {
+      alert("Failed to join pool");
+    } finally {
+      setJoiningId(null);
+    }
+  }
+
+  if (loading) return <p>Loading pools...</p>;
 
   return (
     <div className="pickem-content">
@@ -37,24 +64,20 @@ function JoinPool({ goBack }) {
       <h2>Available pools</h2>
       <table className="pools-table">
         <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Participants</th>
-            <th>Limit</th>
-            <th>Visibility</th>
-            <th>Action</th>
-          </tr>
+          <tr><th>Name</th><th>Scoring</th><th>Participants</th><th>Limit</th><th>Action</th></tr>
         </thead>
         <tbody>
           {pools.map(pool => (
             <tr key={pool.id}>
               <td>{pool.name}</td>
-              <td>{pool.type}</td>
+              <td>{pool.scoringType === "spread" ? "Against the spread" : "Straight up"}</td>
               <td>{pool.participants}</td>
               <td>{pool.limit ?? "No limit"}</td>
-              <td>{pool.visibility}</td>
-              <td><button className="btn join-btn">Join</button></td>
+              <td>
+                <button className="btn join-btn" onClick={() => handleJoin(pool.id)} disabled={joiningId === pool.id}>
+                  {joiningId === pool.id ? "Joining..." : "Join"}
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -63,21 +86,28 @@ function JoinPool({ goBack }) {
   );
 }
 
-// ---------------- Create Pool ----------------
 function CreatePool({ goBack }) {
-  const [type, setType] = useState("Standard");
-  const [conference, setConference] = useState("All");
+  const [name, setName] = useState("");
+  const [scoringType, setScoringType] = useState("straight");
   const [limit, setLimit] = useState("");
-  const [visibility, setVisibility] = useState("Public");
+  const [error, setError] = useState(null);
 
-  const conferences = ['AP Top 25', 'SEC', 'ACC', 'Big 12', 'Big Ten', 'Mountain West', 'Pac-12', 'FBS Independents', 'Mid-American','Sun Belt', 'Ivy', 'Patriot'];
-
-  const handleSubmit = (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
-    const newPool = { type, conference, limit, visibility };
-    console.log("Creating pool:", newPool);
-    goBack();
-  };
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/pools`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name, scoringType, limit: limit ? Number(limit) : null }),
+      });
+      if (!res.ok) throw new Error();
+      goBack();
+    } catch {
+      setError("Failed to create pool. Try again.");
+    }
+  }
 
   return (
     <div className="pickem-content">
@@ -85,40 +115,21 @@ function CreatePool({ goBack }) {
       <h2>Create a new pool</h2>
       <form className="create-pool-form" onSubmit={handleSubmit}>
         <label>
-          Pool Type:
-          <select value={type} onChange={e => setType(e.target.value)}>
-            <option value="Standard">Standard</option>
-            <option value="Spread">Spread</option>
-          </select>
+          Pool Name:
+          <input type="text" value={name} onChange={e => setName(e.target.value)} required />
         </label>
-
         <label>
-          Conference:
-          <select value={conference} onChange={e => setConference(e.target.value)}>
-            <option value="All">All</option>
-            {conferences.map(c => <option key={c} value={c}>{c}</option>)}
+          Scoring Type:
+          <select value={scoringType} onChange={e => setScoringType(e.target.value)}>
+            <option value="straight">Straight up</option>
+            <option value="spread">Against the spread</option>
           </select>
         </label>
-
         <label>
           Group Limit (optional):
-          <input
-            type="number"
-            value={limit}
-            onChange={e => setLimit(e.target.value)}
-            placeholder="No limit"
-            min={1}
-          />
+          <input type="number" value={limit} onChange={e => setLimit(e.target.value)} placeholder="No limit" min={1} />
         </label>
-
-        <label>
-          Visibility:
-          <select value={visibility} onChange={e => setVisibility(e.target.value)}>
-            <option value="Public">Public</option>
-            <option value="Private">Private</option>
-          </select>
-        </label>
-
+        {error && <p className="error-message">{error}</p>}
         <button type="submit" className="btn create-btn">Create Pool</button>
       </form>
     </div>
