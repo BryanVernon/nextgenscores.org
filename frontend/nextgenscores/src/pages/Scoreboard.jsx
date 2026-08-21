@@ -243,10 +243,9 @@ function GameCard({ game }) {
 
         {/* TEAMS FULL WIDTH */}
         <div className="teams-fullwidth">
-          <TeamBlock name={game.awayTeam} score={awayScore} logo={game.awayLogo} />
-          <TeamBlock name={game.homeTeam} score={homeScore} logo={game.homeLogo} />
+          <TeamBlock name={game.awayTeam} score={awayScore} logo={game.awayLogo} rank={game.awayApRank} />
+          <TeamBlock name={game.homeTeam} score={homeScore} logo={game.homeLogo} rank={game.homeApRank} />
         </div>
-
         {/* BOTTOM — BETTING INFO */}
         {(spread !== null || overUnder !== null) && (
           <div className="betting-card">
@@ -262,7 +261,7 @@ function GameCard({ game }) {
 
 
 
-function TeamBlock({ name, score, logo }) {
+function TeamBlock({ name, score, logo, rank }) {
   const fallback = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
       <rect width="100%" height="100%" fill="#e5e7eb"/>
@@ -276,7 +275,9 @@ function TeamBlock({ name, score, logo }) {
         <div className="team-logo">
           <img src={logo || fallback} alt={`${name} logo`} onError={(e)=>{ e.currentTarget.src=fallback }} />
         </div>
-        <div className="team-name">{name}</div>
+        <div className="team-name">
+          {rank != null && <span className="team-rank">#{rank}</span>} {name}
+        </div>
       </div>
       <div className="team-info-right">
         <div className="small-score">{score}</div>
