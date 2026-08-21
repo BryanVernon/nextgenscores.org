@@ -12,6 +12,9 @@ import Login from "./components/auth/Login.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Settings from "./pages/Settings.jsx";
 import Leaderboard from "./pages/Leaderboard.jsx";
+import ThemeApplier from "./components/ThemeApplier.jsx";
+import AdminRoute from "./components/AdminRoute.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
 // Landing component must use AuthContext
 function Landing() {
   const { user, loading } = useContext(AuthContext);
@@ -41,6 +44,7 @@ const router = createBrowserRouter([
       { path: "*", element: <div>404 Not Found</div> },
       { path: "settings", element: <Settings /> },
       { path: "leaderboard", element: <Leaderboard /> },
+      { path: "admin", element: <AdminRoute><AdminDashboard /></AdminRoute> },
     ],
   }
 
@@ -49,7 +53,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AuthProvider>
-      <RouterProvider router={router} /> {/* ← pass the router object */}
+      <ThemeApplier>
+        <RouterProvider router={router} />
+      </ThemeApplier>
     </AuthProvider>
   </StrictMode>
 );

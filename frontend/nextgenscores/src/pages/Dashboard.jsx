@@ -7,7 +7,7 @@ const API_BASE = window.location.hostname === "localhost"
   : "https://nextgenscores-org.onrender.com";
 
 export default function Dashboard() {
-  const { user, logout, loading } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
   const [summaries, setSummaries] = useState({});
   const [pools, setPools] = useState([]);
   const [poolsLoading, setPoolsLoading] = useState(true);
@@ -91,15 +91,29 @@ function TeamPanel({ team, summary }) {
 
       {lastGame && (
         <p>
-          Last: {lastGame.isHome ? "vs" : "@"} {lastGame.opponent} — {lastGame.teamScore}-{lastGame.oppScore}
+          Last Game: {lastGame.isHome ? "vs" : "@"} {lastGame.opponent} — {lastGame.teamScore}-{lastGame.oppScore}
         </p>
       )}
 
       {nextGame && (
-        <p>
-          Next: {nextGame.isHome ? "vs" : "@"} {nextGame.opponent} on{" "}
-          {new Date(nextGame.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </p>
+        <>
+          <p>
+            Next Game: {nextGame.isHome ? "vs" : "@"} {nextGame.opponent} on{" "}
+            {new Date(nextGame.startDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            at{" "}
+            {new Date(nextGame.startDate).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </p>
+
+          {nextGame.outlet && (
+            <p>Watch on: {nextGame.outlet}</p>
+          )}
+        </>
       )}
     </div>
   );
@@ -112,7 +126,7 @@ function PoolPanel({ pools, loading, error }) {
       <strong>No pools yet</strong><p>Join a pool to make your picks and compete with friends.</p>
       <Link className="dashboard-link" to="/pickem">Find a pool <span aria-hidden="true">→</span></Link>
     </> : <div className="dashboard-pool-list">{pools.map(pool => <Link className="dashboard-pool-link" to={`/pickem?pool=${pool.id}`} key={pool.id}>
-      <span><strong>{pool.name}</strong><small>{pool.conference} · {pool.participants} players</small></span><span aria-hidden="true">→</span>
+      <span><strong>{pool.name}</strong><small>{pool.conference} · {pool.participants}/{pool.limit ?? 10} players</small></span><span aria-hidden="true">→</span>
     </Link>)}</div>}
   </div>;
 }

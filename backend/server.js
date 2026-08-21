@@ -6,6 +6,7 @@ import cors from "cors";import subscriberRoutes from "./routes/subscriberRoutes.
 import authRoutes from "./routes/auth.js";
 import cookieParser from "cookie-parser";
 import poolRoutes from "./routes/pools.js";
+import adminRoutes from "./routes/admin.js";
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ const gameSchema = new mongoose.Schema({
   awayApRank: Number,
   spread: Number,
   overUnder: Number,
+  outlet: String,
 });
 
 const Game = mongoose.model("game", gameSchema);
@@ -62,6 +64,25 @@ function normalizeTeamName(name) {
     .toLowerCase()
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]/g, "");
+}
+
+async function fetchGameOutlets(year) {
+  try {
+    const headers = process.env.CFB_API_KEY
+      ? { Authorization: `Bearer ${process.env.CFB_API_KEY}` }
+      : {};
+    const response = await fetch(
+      `https://api.collegefootballdata.com/games/media?year=${year}`,
+      { headers }
+    );
+    if (!response.ok) throw new Error(`CFBD media request failed: ${response.status}`);
+
+    const media = await response.json();
+    return new Map(media.filter(item => item.outlet).map(item => [Number(item.id), item.outlet]));
+  } catch (error) {
+    console.error("Game media fetch error:", error.message);
+    return new Map();
+  }
 }
 
 async function fetchApRankings(year) {
@@ -155,6 +176,7 @@ app.get("/api/fetch-games", async (req, res) => {
       { headers }
     );
     const gamesData = await gamesRes.json();
+    const outletByGameId = await fetchGameOutlets(year);
 
     const teamsRes = await fetch("https://api.collegefootballdata.com/teams", { headers });
     const teamsData = await teamsRes.json();
@@ -191,6 +213,7 @@ app.get("/api/fetch-games", async (req, res) => {
       awayApRank: apRankings.get(normalizeTeamName(g.awayTeam)) ?? null,
       spread: linesMap[g.id]?.spread ?? null,
       overUnder: linesMap[g.id]?.overUnder ?? null,
+      outlet: outletByGameId.get(Number(g.id)) ?? g.outlet ?? g.tv ?? g.network ?? null,
     }));
 
     const result = await Game.insertMany(enrichedGames, { ordered: false }).catch(err => {
@@ -201,6 +224,23 @@ app.get("/api/fetch-games", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch or store enriched games", details: err.message });
+  }
+});
+
+// Backfill TV outlets without replacing the existing schedule data.
+app.get("/api/sync-game-outlets", async (req, res) => {
+  try {
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const outletByGameId = await fetchGameOutlets(year);
+    const operations = [...outletByGameId].map(([id, outlet]) => ({
+      updateOne: { filter: { id }, update: { $set: { outlet } } },
+    }));
+
+    if (operations.length) await Game.bulkWrite(operations, { ordered: false });
+    res.json({ message: `Updated TV outlets for ${operations.length} ${year} games.` });
+  } catch (error) {
+    console.error("Sync game outlets error:", error);
+    res.status(500).json({ error: "Failed to sync game outlets" });
   }
 });
 
@@ -227,7 +267,7 @@ app.get("/api/team-summary", async (req, res) => {
     const games = await Game.find({
       season,
       $or: [{ homeTeam: team }, { awayTeam: team }],
-    }).sort({ startDate: 1 });
+    }).sort({ startDate: 1 }).lean();
 
     const now = new Date();
     let wins = 0, losses = 0;
@@ -245,7 +285,7 @@ app.get("/api/team-summary", async (req, res) => {
         else if (teamScore < oppScore) losses++;
         played.push({ opponent, teamScore, oppScore, isHome, startDate: g.startDate });
       } else if (new Date(g.startDate) >= now) {
-        upcoming.push({ opponent, isHome, startDate: g.startDate });
+        upcoming.push({ opponent, isHome, startDate: g.startDate, outlet: g.outlet ?? g.tv ?? g.network ?? null });
       }
     });
 
@@ -289,6 +329,7 @@ app.get("/api/teams-by-conference", async (req, res) => {
   }
 });
 app.use("/api/pools", poolRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Routes
 app.use("/api/auth", authRoutes);

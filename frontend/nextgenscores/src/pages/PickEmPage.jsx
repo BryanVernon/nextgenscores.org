@@ -42,7 +42,7 @@ export default function PickEmPage() {
   return <div className="pickem-page">
     <p className="eyebrow">Compete with your people</p><h1>Pick 'Em <span>Pools</span></h1>
     <p className="pickem-intro">Make your calls, track the field, and see who knows college football best.</p>
-    {view === "home" && <><div className="home-buttons"><button className="btn" onClick={() => setView("create")}>Create Pool</button><button className="btn" onClick={() => setView("join")}>Join Pool</button></div><section className="my-pools-section"><div><p className="eyebrow">Your pools</p><h2>Ready for this week</h2></div>{myPoolsLoading ? <p>Loading your pools...</p> : myPools.length === 0 ? <p className="my-pools-empty">You have not joined any pools yet. Choose <strong>Join Pool</strong> to find one.</p> : <div className="my-pools-list">{myPools.map(item => <button className="my-pool-card" key={item.id} onClick={() => openPicks(item)}><span><strong>{item.name}</strong><small>{item.conference} · {item.participants} players</small></span><span aria-hidden="true">→</span></button>)}</div>}</section></>}
+    {view === "home" && <><div className="home-buttons"><button className="btn" onClick={() => setView("create")}>Create Pool</button><button className="btn" onClick={() => setView("join")}>Join Pool</button></div><section className="my-pools-section"><div><p className="eyebrow">Your pools</p><h2>Ready for this week</h2></div>{myPoolsLoading ? <p>Loading your pools...</p> : myPools.length === 0 ? <p className="my-pools-empty">You have not joined any pools yet. Choose <strong>Join Pool</strong> to find one.</p> : <div className="my-pools-list">{myPools.map(item => <button className="my-pool-card" key={item.id} onClick={() => openPicks(item)}><span><strong>{item.name}</strong><small>{item.conference} · {item.participants}/{item.limit ?? 10} players</small></span><span aria-hidden="true">→</span></button>)}</div>}</section></>}
     {view === "join" && <JoinPool goBack={() => setView("home")} openPicks={openPicks} />}
     {view === "create" && <CreatePool goBack={() => setView("home")} openPicks={openPicks} />}
     {view === "picks" && <WeeklyPicks pool={pool} goBack={() => setView("home")} />}
@@ -55,8 +55,8 @@ function JoinPool({ goBack, openPicks }) {
   useEffect(() => { fetch(`${API_BASE}/api/pools`).then(res => res.json()).then(setPools).finally(() => setLoading(false)); }, []);
   async function join(pool) {
     setJoiningId(pool.id);
-    try { const res = await fetch(`${API_BASE}/api/pools/${pool.id}/join`, { method: "POST", credentials: "include" }); if (!res.ok) throw new Error(); openPicks(pool); }
-    catch { alert("Failed to join pool"); } finally { setJoiningId(null); }
+    try { const res = await fetch(`${API_BASE}/api/pools/${pool.id}/join`, { method: "POST", credentials: "include" }); await readApiResponse(res); openPicks(pool); }
+    catch (error) { alert(error.message); } finally { setJoiningId(null); }
   }
   async function deletePool(pool) {
     if (!window.confirm(`Delete ${pool.name}? This permanently removes the pool and every saved pick.`)) return;
@@ -70,14 +70,14 @@ function JoinPool({ goBack, openPicks }) {
   if (loading) return <p>Loading pools...</p>;
   return <div className="pickem-content"><button className="btn back-btn" onClick={goBack}>← Back</button><h2>Available pools</h2>
     <table className="pools-table"><thead><tr><th>Name</th><th>Conference</th><th>Scoring</th><th>Players</th><th>Limit</th><th>Action</th></tr></thead><tbody>{pools.map(item => <tr key={item.id}>
-      <td>{item.name}</td><td>{item.conference}</td><td>{item.scoringType === "spread" ? "Against the spread" : "Straight up"}</td><td>{item.participants}</td><td>{item.limit ?? "No limit"}</td><td>
+      <td>{item.name}</td><td>{item.conference}</td><td>{item.scoringType === "spread" ? "Against the spread" : "Straight up"}</td><td>{item.participants}/{item.limit ?? 10}</td><td>{item.limit ?? 10}</td><td>
         <button className="btn join-btn" onClick={() => join(item)} disabled={joiningId === item.id}>{joiningId === item.id ? "Joining..." : "Join"}</button><button className="btn picks-btn" onClick={() => openPicks(item)}>Make picks</button>{user?.role === "admin" && <button className="btn delete-pool-btn" onClick={() => deletePool(item)}>Delete</button>}
       </td></tr>)}</tbody></table>
   </div>;
 }
 
 function CreatePool({ goBack, openPicks }) {
-  const [name, setName] = useState(""); const [scoringType, setScoringType] = useState("straight"); const [limit, setLimit] = useState(""); const [conference, setConference] = useState("All"); const [conferences, setConferences] = useState([]); const [error, setError] = useState(null);
+  const [name, setName] = useState(""); const [scoringType, setScoringType] = useState("straight"); const [limit, setLimit] = useState("10"); const [conference, setConference] = useState("All"); const [conferences, setConferences] = useState([]); const [error, setError] = useState(null);
   useEffect(() => { fetch(`${API_BASE}/api/teams-by-conference`).then(res => res.ok ? res.json() : {}).then(data => setConferences(Object.keys(data).sort())).catch(() => {}); }, []);
   async function create(event) {
     event.preventDefault(); setError(null);
@@ -90,7 +90,7 @@ function CreatePool({ goBack, openPicks }) {
     <label>Pool Name:<input value={name} onChange={e => setName(e.target.value)} required /></label>
     <label>Scoring Type:<select value={scoringType} onChange={e => setScoringType(e.target.value)}><option value="straight">Straight up</option><option value="spread">Against the spread</option></select></label>
     <label>Conference:<select value={conference} onChange={e => setConference(e.target.value)}><option value="All">All conferences</option>{conferences.map(item => <option key={item} value={item}>{item}</option>)}</select></label>
-    <label>Group Limit (optional):<input type="number" value={limit} onChange={e => setLimit(e.target.value)} placeholder="No limit" min={1} /></label>
+    <label>Player limit:<input type="number" value={limit} onChange={e => setLimit(e.target.value)} min={1} /></label>
     {error && <p className="error-message">{error}</p>}<button type="submit" className="btn create-btn">Create Pool</button>
   </form></div>;
 }

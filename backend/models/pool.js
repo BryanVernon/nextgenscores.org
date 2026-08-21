@@ -5,7 +5,7 @@ const poolSchema = new mongoose.Schema({
   creatorId: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
   scoringType: { type: String, enum: ["straight", "spread"], required: true },
   conference: { type: String, default: "All" },
-  limit: { type: Number, default: null },
+  limit: { type: Number, default: 10 },
   participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
   createdAt: { type: Date, default: Date.now },
 });

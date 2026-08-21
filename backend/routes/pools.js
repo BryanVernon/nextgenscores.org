@@ -5,6 +5,14 @@ import Pick from "../models/pick.js";
 import requireAuth from "../middleware/requireAuth.js";
 
 const router = express.Router();
+const MAX_POOLS_PER_USER = 10;
+
+async function hasReachedPoolLimit(userId) {
+  const poolCount = await Pool.countDocuments({
+    $or: [{ creatorId: userId }, { participants: userId }],
+  });
+  return poolCount >= MAX_POOLS_PER_USER;
+}
 
 function getGameModel() {
   return mongoose.model("game");
@@ -47,7 +55,7 @@ function shapePool(pool) {
     scoringType: pool.scoringType,
     conference: pool.conference,
     participants: pool.participants.length,
-    limit: pool.limit,
+    limit: pool.limit ?? 10,
   };
 }
 
@@ -214,12 +222,17 @@ router.post("/", requireAuth, async (req, res) => {
     if (!["straight", "spread"].includes(scoringType)) {
       return res.status(400).json({ message: "Invalid scoringType" });
     }
+    if (await hasReachedPoolLimit(req.userId)) {
+      return res.status(400).json({ message: `You can join or create up to ${MAX_POOLS_PER_USER} pools.` });
+    }
+    const requestedLimit = Number(limit);
+    const playerLimit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? requestedLimit : 10;
 
     const pool = await Pool.create({
       name,
       scoringType,
       conference: conference || "All",
-      limit: limit || null,
+      limit: playerLimit,
       creatorId: req.userId,
       participants: [req.userId],
     });
@@ -258,7 +271,11 @@ router.post("/:id/join", requireAuth, async (req, res) => {
     if (!pool) return res.status(404).json({ message: "Pool not found" });
 
     if (isPoolParticipant(pool, req.userId)) return res.json({ message: "Already joined" });
-    if (pool.limit && pool.participants.length >= pool.limit) {
+    if (await hasReachedPoolLimit(req.userId)) {
+      return res.status(400).json({ message: `You can join or create up to ${MAX_POOLS_PER_USER} pools.` });
+    }
+    const poolLimit = pool.limit ?? 10;
+    if (pool.participants.length >= poolLimit) {
       return res.status(400).json({ message: "Pool is full" });
     }
 

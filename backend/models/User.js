@@ -4,10 +4,16 @@ import bcrypt from "bcrypt";
 
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
+  firstName: { type: String, trim: true },
+  lastName: { type: String, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ["user", "admin"], default: "user" },
   favoriteTeams: { type: [String], default: [] },
+  theme: {
+    mode: { type: String, enum: ["default", "team"], default: "default" },
+    team: { type: String, default: null },
+  },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -15,10 +21,10 @@ UserSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.passwordHash);
 };
 
-UserSchema.statics.createWithPassword = async function ({ name, email, password, favoriteTeams }) {
+UserSchema.statics.createWithPassword = async function ({ name, firstName, lastName, email, password, favoriteTeams }) {
   const saltRounds = 10;
   const hash = await bcrypt.hash(password, saltRounds);
-  return this.create({ name, email, passwordHash: hash, favoriteTeams: favoriteTeams || [] });
+  return this.create({ name, firstName, lastName, email, passwordHash: hash, favoriteTeams: favoriteTeams || [] });
 };
 
 export default mongoose.models.User || mongoose.model("User", UserSchema);

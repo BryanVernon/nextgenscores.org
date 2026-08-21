@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import "../App.css";
+import { CONFERENCES, getTeamGroups } from "../teamOptions";
+
+const API_URL = window.location.hostname === "localhost"
+  ? "http://localhost:3002/api/games"
+  : "https://nextgenscores-org.onrender.com/api/games";
 
 export default function App() {
-  const API_URL = window.location.hostname === "localhost"
-    ? "http://localhost:3002/api/games"
-    : "https://nextgenscores-org.onrender.com/api/games";
-
   const [games, setGames] = useState([])
   const [filteredGames, setFilteredGames] = useState([])
   const [week, setWeek] = useState(0)
@@ -17,7 +18,8 @@ export default function App() {
 
   const [currentWeek, setCurrentWeek] = useState(0)
   const [conference, setConference] = useState('AP Top 25')
-  const conferences = ['AP Top 25', 'SEC', 'ACC', 'Big 12', 'Big Ten', 'Mountain West', 'Pac-12', 'FBS Independents', 'Mid-American','Sun Belt', 'Ivy', 'Patriot']
+  const [team, setTeam] = useState('')
+  const conferences = CONFERENCES
 
   // Fetch games
   useEffect(() => {
@@ -107,7 +109,9 @@ export default function App() {
   }, []);
 
 
-  // Filter games based on week and conference
+  const teamGroups = useMemo(() => getTeamGroups(games), [games]);
+
+  // Filter games based on week, conference, and team
   useEffect(() => {
     let temp = games
 
@@ -123,8 +127,12 @@ export default function App() {
       temp = temp.filter(g => g.homeConference === conference || g.awayConference === conference)
     }
 
+    if (team) {
+      temp = temp.filter(g => g.homeTeam === team || g.awayTeam === team)
+    }
+
     setFilteredGames(temp)
-  }, [games, week, conference])
+  }, [games, week, conference, team])
 
   const sortedGames = useMemo(() => {
     return filteredGames.slice().sort((a,b) => new Date(a.startDate) - new Date(b.startDate))
@@ -136,6 +144,14 @@ export default function App() {
 
   function handleConferenceChange(e) {
     setConference(e.target.value)
+  }
+
+  function handleTeamChange(e) {
+    setTeam(e.target.value)
+    if (e.target.value) {
+      setConference('All')
+      setWeek(0)
+    }
   }
 
   return (
@@ -159,7 +175,7 @@ export default function App() {
       <div className="filter-container">
         <div className="filter-heading">
           <span className="filter-kicker">Browse the slate</span>
-          <span className="filter-current">{conference === 'All' ? 'All conferences' : conference}</span>
+          <span className="filter-current">{team || (conference === 'All' ? 'All conferences' : conference)}</span>
         </div>
         <div className="filter">
           <label htmlFor="week-filter">Week</label>
@@ -178,6 +194,13 @@ export default function App() {
             {conferences.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
+          </select>
+
+          <label htmlFor="team-filter">Team</label>
+          <select id="team-filter" value={team} onChange={handleTeamChange}>
+            <option value="">All teams</option>
+            {teamGroups.top25.length > 0 && <optgroup label="AP Top 25">{teamGroups.top25.map(item => <option key={item.name} value={item.name}>#{item.rank} {item.name}</option>)}</optgroup>}
+            {teamGroups.remaining.map(group => <optgroup key={group.name} label={group.name}>{group.teams.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}</optgroup>)}
           </select>
         </div>
       </div>
@@ -238,13 +261,13 @@ function GameCard({ game }) {
       <div className="game-card-content">
         {/* TOP RIGHT — small game info */}
         <div className="game-meta">
-          <span className="meta-date">{formattedDate}</span> • <span className="meta-time">{formattedTime}</span>
+          <span className="meta-date">{formattedDate}</span><span className="meta-time">{formattedTime}</span>
         </div>
 
         {/* TEAMS FULL WIDTH */}
         <div className="teams-fullwidth">
-          <TeamBlock name={game.homeTeam} score={homeScore} logo={game.homeLogo} rank={game.homeApRank} />
           <TeamBlock name={game.awayTeam} score={awayScore} logo={game.awayLogo} rank={game.awayApRank} />
+          <TeamBlock name={game.homeTeam} score={homeScore} logo={game.homeLogo} rank={game.homeApRank} />
         </div>
         {/* BOTTOM — BETTING INFO */}
         {(spread !== null || overUnder !== null) && (

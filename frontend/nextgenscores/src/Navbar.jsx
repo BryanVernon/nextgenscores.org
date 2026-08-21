@@ -20,6 +20,7 @@ const Navbar = () => {
             <li><Link to="/pickem">Pick 'Em</Link></li>
             <li><Link to="/leaderboard">Leaderboard</Link></li>
             <li><Link to="/settings">Settings</Link></li>
+            {user.role === "admin" && <li><Link to="/admin">Admin</Link></li>}
             <li><button className="logout-button" onClick={logout}>Log out</button></li>
           </>
         ) : null}
