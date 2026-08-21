@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./PickEmPage.css";
 import { CONFERENCES } from "../teamOptions";
 
-const API_BASE = import.meta.env.MODE === "development" ? "http://localhost:3002" : "https://nextgenscores-org.onrender.com";
+const API_BASE = import.meta.env.MODE === "development" ? `${window.location.protocol}//${window.location.hostname}:3002` : "https://nextgenscores-org.onrender.com";
 
 async function readApiResponse(response) {
   const text = await response.text();
@@ -45,7 +45,7 @@ function JoinPool({ goBack, openPicks }) {
   useEffect(() => { fetch(`${API_BASE}/api/pools`).then(response => response.json()).then(setPools).finally(() => setLoading(false)); }, []);
   async function join(pool) { setJoiningId(pool.id); try { await readApiResponse(await fetch(`${API_BASE}/api/pools/${pool.id}/join`, { method: "POST", credentials: "include" })); openPicks(pool); } catch (error) { alert(error.message); } finally { setJoiningId(null); } }
   if (loading) return <p>Loading pools...</p>;
-  return <div className="pickem-content"><button className="btn back-btn" onClick={goBack}>← Back</button><h2>Available pools</h2><table className="pools-table"><thead><tr><th>Name</th><th>Conference</th><th>Scoring</th><th>Players</th><th>Limit</th><th>Action</th></tr></thead><tbody>{pools.map(item => <tr key={item.id}><td>{item.name}</td><td>{item.conference}</td><td>{item.scoringType === "spread" ? "Against the spread" : "Straight up"}</td><td>{item.participants}/{item.limit ?? 10}</td><td>{item.limit ?? 10}</td><td><button className="btn join-btn" onClick={() => join(item)} disabled={joiningId === item.id}>{joiningId === item.id ? "Joining..." : "Join"}</button></td></tr>)}</tbody></table></div>;
+  return <div className="pickem-content"><button className="btn back-btn" onClick={goBack}>← Back</button><h2>Available pools</h2><table className="pools-table"><thead><tr><th>Name</th><th>Conference</th><th>Scoring</th><th>Players</th><th>Limit</th><th>Action</th></tr></thead><tbody>{pools.map(item => <tr key={item.id}><td>{item.name}</td><td>{item.conference}</td><td>{item.scoringType === "spread" ? "Against the spread" : "Straight up"}</td><td>{item.participants}/{item.limit ?? 10}</td><td>{item.limit ?? 10}</td><td><button className="btn join-btn" onClick={() => join(item)} disabled={joiningId === item.id}>{joiningId === item.id ? "Joining..." : "Join"}</button></td></tr>)}</tbody></table><div className="available-pool-cards">{pools.map(item => <article className="available-pool-card" key={item.id}><div><h3>{item.name}</h3><p>{item.conference}</p></div><dl><div><dt>Scoring</dt><dd>{item.scoringType === "spread" ? "Against the spread" : "Straight up"}</dd></div><div><dt>Players</dt><dd>{item.participants}/{item.limit ?? 10}</dd></div></dl><button className="btn join-btn" onClick={() => join(item)} disabled={joiningId === item.id}>{joiningId === item.id ? "Joining..." : "Join pool"}</button></article>)}</div></div>;
 }
 
 function CreatePool({ goBack, openPicks }) {

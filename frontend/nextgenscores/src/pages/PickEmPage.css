@@ -37,6 +37,7 @@
 .pools-table th { color: var(--ink); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .pools-table td:first-child { color: var(--ink); font-weight: 800; }
 .pools-table tr:last-child td { border-bottom: 0; }
+.available-pool-cards { display: none; }
 .join-btn { margin: 6px 6px 0 0; padding: 8px 12px; background: #e7f7ef; color: #167c58; }
 .join-btn:hover { background: var(--accent); color: white; }
 .picks-btn { margin: 6px 6px 0 0; padding: 8px 12px; background: transparent; color: var(--ink); border: 1px solid var(--line); }
@@ -69,7 +70,16 @@
 @media (max-width: 650px) {
   .pickem-page { padding: 30px 0 48px; }
   .pickem-content { padding: 18px 14px; overflow-x: auto; }
-  .pools-table { min-width: 780px; }
+  .pools-table { display: none; }
+  .available-pool-cards { display: grid; gap: 12px; }
+  .available-pool-card { display: grid; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfa; }
+  .available-pool-card h3 { margin: 0; color: var(--ink); font-size: 1rem; }
+  .available-pool-card p { margin: 4px 0 0; color: var(--muted); font-size: .82rem; }
+  .available-pool-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+  .available-pool-card dl div { display: grid; gap: 3px; }
+  .available-pool-card dt { color: var(--muted); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .available-pool-card dd { margin: 0; color: var(--ink); font-size: .82rem; font-weight: 700; }
+  .available-pool-card .join-btn { width: 100%; margin: 0; min-height: 44px; }
   .create-pool-form { grid-template-columns: 1fr; }
   .create-btn { grid-column: auto; }
   .my-pools-list { grid-template-columns: 1fr; }
@@ -81,7 +91,6 @@
   .home-buttons { display: grid; grid-template-columns: 1fr 1fr; }
   .home-buttons .btn { width: 100%; }
   .pickem-content { margin-top: 14px; padding: 16px 12px; border-radius: 10px; }
-  .pools-table { min-width: 700px; }
   .pick-options { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .at-symbol { display: none; }
   .team-pick { min-width: 0; min-height: 58px; flex-direction: column; gap: 3px; font-size: .78rem; line-height: 1.15; }

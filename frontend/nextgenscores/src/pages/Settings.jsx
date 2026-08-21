@@ -2,7 +2,7 @@ import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
 
 const API_BASE = import.meta.env.MODE === "development"
-  ? "http://localhost:3002"
+  ? `${window.location.protocol}//${window.location.hostname}:3002`
   : "https://nextgenscores-org.onrender.com";
 
 const CONFERENCE_ORDER = ["SEC", "Big Ten", "ACC", "Big 12", "Pac-12", "American", "Mountain West", "Sun Belt", "Conference USA", "MAC", "Independent", "FBS Independents", "Pioneer", "UAC", "Ivy League"];

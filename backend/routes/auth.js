@@ -31,19 +31,28 @@ function signToken(userId) {
   });
 }
 
-function sendTokenCookie(res, token) {
+function getCookieOptions(req) {
   const cookieName = process.env.COOKIE_NAME || "ngs_token";
-  const isSecure = process.env.COOKIE_SECURE
-    ? process.env.COOKIE_SECURE === "true"
-    : process.env.NODE_ENV === "production";
+  const forwardedProtocol = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const isSecure = process.env.COOKIE_SECURE === "true"
+    || forwardedProtocol === "https"
+    || req.protocol === "https";
 
-  res.cookie(cookieName, token, {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: isSecure ? "none" : "lax",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  return {
+    cookieName,
+    options: {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: isSecure ? "none" : "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
+  };
+}
+
+function sendTokenCookie(req, res, token) {
+  const { cookieName, options } = getCookieOptions(req);
+  res.cookie(cookieName, token, options);
 }
 
 
@@ -62,7 +71,7 @@ router.post("/signup", async (req, res) => {
 
     const user = await syncConfiguredAdmin(await User.createWithPassword({ name: fullName, firstName, lastName, email, password, favoriteTeams }));
     const token = signToken(user._id);
-    sendTokenCookie(res, token);
+    sendTokenCookie(req, res, token);
 
     // return user object (omit passwordHash)
     res.status(201).json({ user: safeUser(user) });
@@ -86,7 +95,7 @@ router.post("/login", async (req, res) => {
 
     await syncConfiguredAdmin(user);
     const token = signToken(user._id);
-    sendTokenCookie(res, token);
+    sendTokenCookie(req, res, token);
 
     res.json({ user: safeUser(user) });
   } catch (err) {
@@ -97,12 +106,8 @@ router.post("/login", async (req, res) => {
 
 // POST /api/auth/logout
 router.post("/logout", (req, res) => {
-  const cookieName = process.env.COOKIE_NAME || "ngs_token";
-  res.clearCookie(cookieName, {
-    httpOnly: true,
-    secure: process.env.COOKIE_SECURE === "true",
-    sameSite: process.env.COOKIE_SECURE === "true" ? "none" : "lax",
-  });
+  const { cookieName, options } = getCookieOptions(req);
+  res.clearCookie(cookieName, options);
   res.json({ message: "Logged out" });
 });
 

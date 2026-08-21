@@ -7,7 +7,7 @@ import { getTeamGroups } from "../../teamOptions";
 import "./Auth.css";
 
 const GAMES_URL = import.meta.env.MODE === "development"
-  ? "http://localhost:3002/api/games"
+  ? `${window.location.protocol}//${window.location.hostname}:3002/api/games`
   : "https://nextgenscores-org.onrender.com/api/games";
 
 export default function Signup() {

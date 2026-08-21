@@ -3,7 +3,7 @@ import axios from "axios";
 
 const baseURL =
   import.meta.env.MODE === "development"
-    ? "http://localhost:3002/api"       // dev backend
+    ? `${window.location.protocol}//${window.location.hostname}:3002/api`
     : "https://nextgenscores-org.onrender.com/api"; // prod backend
 
 const api = axios.create({

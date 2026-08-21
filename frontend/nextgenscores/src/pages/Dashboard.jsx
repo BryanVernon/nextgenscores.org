@@ -3,7 +3,7 @@ import { AuthContext } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
 const API_BASE = import.meta.env.MODE === "development"
-  ? "http://localhost:3002"
+  ? `${window.location.protocol}//${window.location.hostname}:3002`
   : "https://nextgenscores-org.onrender.com";
 
 export default function Dashboard() {
