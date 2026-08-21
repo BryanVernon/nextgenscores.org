@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
 
-const API_BASE = window.location.hostname === "localhost"
+const API_BASE = import.meta.env.MODE === "development"
   ? "http://localhost:3002"
   : "https://nextgenscores-org.onrender.com";
 

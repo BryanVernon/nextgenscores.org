@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./Leaderboard.css";
 
-const API_BASE = window.location.hostname === "localhost" ? "http://localhost:3002" : "https://nextgenscores-org.onrender.com";
+const API_BASE = import.meta.env.MODE === "development" ? "http://localhost:3002" : "https://nextgenscores-org.onrender.com";
 
 async function readLeaderboard(pool, signal) {
   const response = await fetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { credentials: "include", signal });

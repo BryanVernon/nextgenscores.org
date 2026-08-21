@@ -6,7 +6,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { getTeamGroups } from "../../teamOptions";
 import "./Auth.css";
 
-const GAMES_URL = window.location.hostname === "localhost"
+const GAMES_URL = import.meta.env.MODE === "development"
   ? "http://localhost:3002/api/games"
   : "https://nextgenscores-org.onrender.com/api/games";
 

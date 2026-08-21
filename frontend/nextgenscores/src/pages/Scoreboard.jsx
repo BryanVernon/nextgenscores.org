@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import "../App.css";
 import { CONFERENCES, getTeamGroups } from "../teamOptions";
 
-const API_URL = window.location.hostname === "localhost"
+const API_URL = import.meta.env.MODE === "development"
   ? "http://localhost:3002/api/games"
   : "https://nextgenscores-org.onrender.com/api/games";
 

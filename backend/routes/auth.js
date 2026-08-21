@@ -33,12 +33,14 @@ function signToken(userId) {
 
 function sendTokenCookie(res, token) {
   const cookieName = process.env.COOKIE_NAME || "ngs_token";
-  const isProd = process.env.NODE_ENV === "production";
+  const isSecure = process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === "true"
+    : process.env.NODE_ENV === "production";
 
   res.cookie(cookieName, token, {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
+    secure: isSecure,
+    sameSite: isSecure ? "none" : "lax",
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });

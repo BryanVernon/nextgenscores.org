@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
 
-const API_BASE = window.location.hostname === "localhost" ? "http://localhost:3002" : "https://nextgenscores-org.onrender.com";
+const API_BASE = import.meta.env.MODE === "development" ? "http://localhost:3002" : "https://nextgenscores-org.onrender.com";
 
 async function readResponse(response) {
   const body = await response.json();
