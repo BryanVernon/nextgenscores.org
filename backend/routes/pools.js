@@ -23,6 +23,30 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET /api/pools/mine - list pools the authenticated user created or joined
+router.get("/mine", requireAuth, async (req, res) => {
+  try {
+    const pools = await Pool.find({
+      $or: [
+        { creatorId: req.userId },
+        { participants: req.userId },
+      ],
+    }).sort({ createdAt: -1 });
+
+    res.json(pools.map(pool => ({
+      id: pool._id,
+      name: pool.name,
+      scoringType: pool.scoringType,
+      conference: pool.conference,
+      participants: pool.participants.length,
+      limit: pool.limit,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load your pools" });
+  }
+});
+
 // POST /api/pools — create a pool
 router.post("/", requireAuth, async (req, res) => {
   try {
