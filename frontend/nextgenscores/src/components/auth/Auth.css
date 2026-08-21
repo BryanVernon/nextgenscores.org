@@ -57,3 +57,10 @@
   .auth-panel { padding: 28px 22px; }
   .name-fields { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 480px) {
+  .auth-page { min-height: calc(100dvh - 118px); padding: 24px 0; }
+  .auth-panel { width: 100%; padding: 26px 18px; border-radius: 12px; }
+  .auth-panel h1 { font-size: 2rem; }
+  .auth-panel input, .auth-panel select, .auth-submit { min-height: 48px; }
+}

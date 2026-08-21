@@ -26,3 +26,10 @@
   .leaderboard-row { grid-template-columns: 36px 1fr auto; }
   .leaderboard-row small { grid-column: 2 / -1; text-align: left; }
 }
+
+@media (max-width: 480px) {
+  .leaderboard-page { padding: 26px 0 40px; }
+  .leaderboard-page h1 { font-size: clamp(2.15rem, 12vw, 3rem); }
+  .leaderboard-board { padding: 16px 12px; }
+  .leaderboard-row { gap: 8px; padding: 12px 10px; }
+}

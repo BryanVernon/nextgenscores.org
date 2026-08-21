@@ -11,7 +11,6 @@ export default function Dashboard() {
   const [summaries, setSummaries] = useState({});
   const [pools, setPools] = useState([]);
   const [poolsLoading, setPoolsLoading] = useState(true);
-  const [poolsError, setPoolsError] = useState(null);
 
   useEffect(() => {
     if (!user?.favoriteTeams?.length) return;
@@ -32,11 +31,14 @@ export default function Dashboard() {
     if (!user) return;
     fetch(`${API_BASE}/api/pools/mine`, { credentials: "include" })
       .then(async res => {
-        if (!res.ok) throw new Error("Couldn't load your pools. Make sure the backend has been restarted.");
+        if (!res.ok) throw new Error("Couldn't load your pools.");
         return res.json();
       })
       .then(setPools)
-      .catch(error => setPoolsError(error.message))
+      .catch(error => {
+        console.error(error);
+        setPools([]);
+      })
       .finally(() => setPoolsLoading(false));
   }, [user]);
 
@@ -62,7 +64,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <PoolPanel pools={pools} loading={poolsLoading} error={poolsError} />
+        <PoolPanel pools={pools} loading={poolsLoading} />
       </section>
 
       <div className="dashboard-actions">
@@ -119,10 +121,10 @@ function TeamPanel({ team, summary }) {
   );
 }
 
-function PoolPanel({ pools, loading, error }) {
+function PoolPanel({ pools, loading }) {
   return <div className="dashboard-panel pools-panel">
     <span className="panel-label">Pick 'Em pools</span>
-    {loading ? <p>Loading your pools...</p> : error ? <><strong>Pool status unavailable</strong><p>{error}</p></> : pools.length === 0 ? <>
+    {loading ? <p>Loading your pools...</p> : pools.length === 0 ? <>
       <strong>No pools yet</strong><p>Join a pool to make your picks and compete with friends.</p>
       <Link className="dashboard-link" to="/pickem">Find a pool <span aria-hidden="true">→</span></Link>
     </> : <div className="dashboard-pool-list">{pools.map(pool => <Link className="dashboard-pool-link" to={`/pickem?pool=${pool.id}`} key={pool.id}>

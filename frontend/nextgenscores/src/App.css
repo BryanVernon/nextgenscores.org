@@ -179,3 +179,26 @@
   .filter select { flex: 1; min-width: 0; }
   .games-grid { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 480px) {
+  .schedule-page, .dashboard-page, .settings-page { padding: 26px 0 40px; }
+  .schedule-header { gap: 16px; margin-bottom: 22px; }
+  .schedule-header h1, .dashboard-page h1, .settings-page h1 { font-size: clamp(2.15rem, 12vw, 3rem); }
+  .schedule-intro, .dashboard-lede, .settings-intro { font-size: .94rem; }
+  .filter-container { gap: 16px; margin-bottom: 18px; padding: 14px; }
+  .filter { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; }
+  .filter label { align-self: center; }
+  .filter select { width: 100%; min-height: 42px; }
+  .game-card-content { gap: 14px; padding: 16px; }
+  .team-info-left { min-width: 0; gap: 9px; }
+  .team-logo { flex-basis: 38px; width: 38px; height: 38px; }
+  .team-logo img { width: 28px; height: 28px; }
+  .team-name { min-width: 0; font-size: .92rem; }
+  .small-score { font-size: 1.25rem; }
+  .betting-card { flex-wrap: wrap; }
+  .settings-section { padding: 18px 14px; }
+  .settings-section-heading { gap: 10px; }
+  .settings-icon { flex-basis: 34px; width: 34px; height: 34px; }
+  .selected-teams { margin: 16px 0; }
+  .weekly-leaderboard li { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; padding: 10px; }
+}

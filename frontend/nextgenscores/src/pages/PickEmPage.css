@@ -37,13 +37,12 @@
 .pools-table th { color: var(--ink); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .pools-table td:first-child { color: var(--ink); font-weight: 800; }
 .pools-table tr:last-child td { border-bottom: 0; }
-.join-btn { padding: 8px 12px; background: #e7f7ef; color: #167c58; }
+.join-btn { margin: 6px 6px 0 0; padding: 8px 12px; background: #e7f7ef; color: #167c58; }
 .join-btn:hover { background: var(--accent); color: white; }
-.picks-btn { margin: 6px 0 0; padding: 8px 12px; background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.picks-btn { margin: 6px 6px 0 0; padding: 8px 12px; background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .picks-btn:hover { background: var(--ink); color: white; }
 .delete-pool-btn { margin: 6px 0 0; padding: 8px 12px; background: #fff2f0; color: #b42318; }
-.delete-pool-btn:hover { background: #b42318; color: white; }
-.create-pool-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.delete-pool-btn:hover { background: #b42318; color: white; }.create-pool-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .create-pool-form label { display: grid; gap: 7px; color: var(--ink); font-size: 0.8rem; font-weight: 800; }
 .create-pool-form select, .create-pool-form input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: #fbfcfa; color: var(--ink); font: inherit; }
 .create-pool-form select:focus, .create-pool-form input:focus { outline: 3px solid rgba(30, 166, 117, 0.18); border-color: var(--accent); }
@@ -53,9 +52,13 @@
 .pick-game { padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
 .pick-game time { display: block; margin-bottom: 10px; color: var(--muted); font-size: 0.78rem; }
 .pick-options { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
-.pick-options > span { color: var(--muted); font-weight: 800; }
-.team-pick { min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+.at-symbol { color: var(--muted); font-weight: 800; }
+.team-pick { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+.team-pick img { width: 26px; height: 26px; object-fit: contain; }
+.pick-rank { margin-right: 4px; color: var(--accent); font-size: .78em; }
 .team-pick:hover, .team-pick.selected { border-color: var(--accent); background: #e7f7ef; color: #167c58; }
+.pick-lines { display: flex; justify-content: center; gap: 10px; margin-top: 10px; color: #167c58; font-size: .76rem; font-weight: 800; }
+.pick-lines span { padding: 5px 8px; border: 1px solid #d6e9df; border-radius: 999px; background: #eff9f4; }
 .error-message { color: #b42318; font-weight: 700; }
 .picks-confirmation { display: flex; align-items: center; gap: 14px; margin: 20px 0; padding: 18px; border: 1px solid #cfe7db; border-radius: 10px; background: #eff9f4; }
 .picks-confirmation > span { display: grid; flex: 0 0 30px; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: var(--accent); color: white; font-weight: 900; }
@@ -70,4 +73,21 @@
   .create-pool-form { grid-template-columns: 1fr; }
   .create-btn { grid-column: auto; }
   .my-pools-list { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .pickem-page { padding: 26px 0 40px; }
+  .pickem-page h1 { font-size: clamp(2.15rem, 12vw, 3rem); }
+  .home-buttons { display: grid; grid-template-columns: 1fr 1fr; }
+  .home-buttons .btn { width: 100%; }
+  .pickem-content { margin-top: 14px; padding: 16px 12px; border-radius: 10px; }
+  .pools-table { min-width: 700px; }
+  .pick-options { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+  .at-symbol { display: none; }
+  .team-pick { min-width: 0; min-height: 58px; flex-direction: column; gap: 3px; font-size: .78rem; line-height: 1.15; }
+  .team-pick span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .team-pick img { width: 24px; height: 24px; }
+  .pick-lines { flex-wrap: wrap; gap: 6px; }
+  .picks-confirmation { flex-wrap: wrap; align-items: flex-start; padding: 14px; }
+  .picks-confirmation .picks-btn { margin-left: 44px; }
 }

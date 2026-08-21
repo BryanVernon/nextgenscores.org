@@ -110,6 +110,12 @@ router.get("/:id/picks/current", requireAuth, async (req, res) => {
         homeTeam: game.homeTeam,
         awayTeam: game.awayTeam,
         startDate: game.startDate,
+        homeLogo: game.homeLogo,
+        awayLogo: game.awayLogo,
+        homeApRank: game.homeApRank,
+        awayApRank: game.awayApRank,
+        spread: game.spread,
+        overUnder: game.overUnder,
       })),
       picks: Object.fromEntries(picks.map(pick => [pick.gameId, pick.pick])),
     });
