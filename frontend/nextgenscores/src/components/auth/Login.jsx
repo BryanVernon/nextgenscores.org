@@ -20,6 +20,7 @@ export default function Login() {
       const res = await axios.post("/auth/login", data, { withCredentials: true });
       
       // Update context with user returned from backend
+      localStorage.setItem("ngs-returning-user", "true");
       setUser(res.data.user);
 
       // Redirect to dashboard or schedule

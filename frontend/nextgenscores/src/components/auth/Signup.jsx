@@ -33,6 +33,7 @@ export default function Signup() {
         lastName,
         favoriteTeams: favoriteTeam ? [favoriteTeam] : [],
       });
+      localStorage.setItem("ngs-returning-user", "true");
       setUser(res.data.user);
       navigate("/dashboard");
     } catch (requestError) {
