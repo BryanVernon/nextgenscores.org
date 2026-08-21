@@ -11,4 +11,10 @@ const api = axios.create({
   withCredentials: true,  // send cookies
 });
 
+api.interceptors.request.use(config => {
+  const token = sessionStorage.getItem("ngs_session_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 export default api;

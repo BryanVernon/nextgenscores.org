@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { Link } from "react-router-dom";
+import authFetch from "../authFetch";
 
 const API_BASE = import.meta.env.MODE === "development"
   ? `${window.location.protocol}//${window.location.hostname}:3002`
@@ -29,7 +30,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    fetch(`${API_BASE}/api/pools/mine`, { credentials: "include" })
+    authFetch(`${API_BASE}/api/pools/mine`)
       .then(async res => {
         if (!res.ok) throw new Error("Couldn't load your pools.");
         return res.json();

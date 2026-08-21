@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import "./Leaderboard.css";
+import authFetch from "../authFetch";
 
 const API_BASE = import.meta.env.MODE === "development" ? `${window.location.protocol}//${window.location.hostname}:3002` : "https://nextgenscores-org.onrender.com";
 
 async function readLeaderboard(pool, signal) {
-  const response = await fetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { credentials: "include", signal });
+  const response = await authFetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { signal });
   const body = await response.json();
   if (!response.ok) throw new Error(body.message || "Unable to load leaderboard");
   if (!Array.isArray(body?.leaderboard)) throw new Error("The leaderboard response is incomplete.");
@@ -21,7 +22,7 @@ export default function Leaderboard() {
 
     async function loadBoards() {
       try {
-        const response = await fetch(`${API_BASE}/api/pools/mine`, { credentials: "include", signal: controller.signal });
+        const response = await authFetch(`${API_BASE}/api/pools/mine`, { signal: controller.signal });
         if (!response.ok) throw new Error("Unable to load your pools");
         const pools = await response.json();
         const results = await Promise.all(pools.map(async pool => {

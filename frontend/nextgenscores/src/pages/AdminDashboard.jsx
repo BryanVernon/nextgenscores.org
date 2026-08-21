@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
+import authFetch from "../authFetch";
 
 const API_BASE = import.meta.env.MODE === "development" ? `${window.location.protocol}//${window.location.hostname}:3002` : "https://nextgenscores-org.onrender.com";
 
@@ -17,7 +18,7 @@ export default function AdminDashboard() {
   async function loadDashboard() {
     try {
       setError(null);
-      const response = await fetch(`${API_BASE}/api/admin/overview`, { credentials: "include" });
+      const response = await authFetch(`${API_BASE}/api/admin/overview`);
       setData(await readResponse(response));
     } catch (loadError) {
       setError(loadError.message);
@@ -35,7 +36,7 @@ export default function AdminDashboard() {
 
     setBusyId(`${resource}-${item.id}`);
     try {
-      const response = await fetch(`${API_BASE}/api/admin/${resource}/${item.id}`, { method: "DELETE", credentials: "include" });
+      const response = await authFetch(`${API_BASE}/api/admin/${resource}/${item.id}`, { method: "DELETE" });
       await readResponse(response);
       await loadDashboard();
     } catch (deleteError) {

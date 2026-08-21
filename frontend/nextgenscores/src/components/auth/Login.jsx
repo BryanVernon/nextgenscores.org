@@ -21,6 +21,7 @@ export default function Login() {
       
       // Update context with user returned from backend
       localStorage.setItem("ngs-returning-user", "true");
+      sessionStorage.setItem("ngs_session_token", res.data.token);
       setUser(res.data.user);
 
       // Redirect to dashboard or schedule

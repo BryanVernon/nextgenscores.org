@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
       try {
         const res = await axios.get("/auth/me");
         setUser(res.data.user);
-      } catch (err) {
+      } catch (_error) {
         setUser(null);
       } finally {
         setLoading(false);
@@ -25,6 +25,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await axios.post("/auth/logout");
+      sessionStorage.removeItem("ngs_session_token");
       setUser(null);
     } catch (err) {
       console.error("Logout error", err);

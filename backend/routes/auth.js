@@ -3,6 +3,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { isConfiguredAdmin } from "../utils/admin.js";
+import requireAuth from "../middleware/requireAuth.js";
 const router = express.Router();
 
 async function syncConfiguredAdmin(user) {
@@ -74,7 +75,7 @@ router.post("/signup", async (req, res) => {
     sendTokenCookie(req, res, token);
 
     // return user object (omit passwordHash)
-    res.status(201).json({ user: safeUser(user) });
+    res.status(201).json({ user: safeUser(user), token });
   } catch (err) {
     console.error("Signup error", err);
     res.status(500).json({ message: "Server error" });
@@ -97,7 +98,7 @@ router.post("/login", async (req, res) => {
     const token = signToken(user._id);
     sendTokenCookie(req, res, token);
 
-    res.json({ user: safeUser(user) });
+    res.json({ user: safeUser(user), token });
   } catch (err) {
     console.error("Login error", err);
     res.status(500).json({ message: "Server error" });
@@ -112,15 +113,9 @@ router.post("/logout", (req, res) => {
 });
 
 // GET /api/auth/me
-router.get("/me", async (req, res) => {
+router.get("/me", requireAuth, async (req, res) => {
   try {
-    // read token from cookie
-    const cookieName = process.env.COOKIE_NAME || "ngs_token";
-    const token = req.cookies?.[cookieName] || null;
-    if (!token) return res.status(401).json({ message: "Not authenticated" });
-
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(payload.sub);
+    const user = await User.findById(req.userId);
     if (!user) return res.status(401).json({ message: "Not authenticated" });
     await syncConfiguredAdmin(user);
 
@@ -157,13 +152,8 @@ router.put("/favorite-teams", async (req, res) => {
   }
 });
 
-router.put("/preferences", async (req, res) => {
+router.put("/preferences", requireAuth, async (req, res) => {
   try {
-    const cookieName = process.env.COOKIE_NAME || "ngs_token";
-    const token = req.cookies?.[cookieName];
-    if (!token) return res.status(401).json({ message: "Not authenticated" });
-
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
     const { favoriteTeams, theme } = req.body;
     const mode = theme?.mode;
     const team = theme?.team || null;
@@ -179,7 +169,7 @@ router.put("/preferences", async (req, res) => {
     }
 
     const user = await User.findByIdAndUpdate(
-      payload.sub,
+      req.userId,
       { favoriteTeams, theme: { mode, team: mode === "team" ? team : null } },
       { new: true }
     );

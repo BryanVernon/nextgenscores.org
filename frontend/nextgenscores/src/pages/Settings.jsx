@@ -1,5 +1,6 @@
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
+import authFetch from "../authFetch";
 
 const API_BASE = import.meta.env.MODE === "development"
   ? `${window.location.protocol}//${window.location.hostname}:3002`
@@ -51,10 +52,9 @@ export default function Settings() {
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/preferences`, {
+      const res = await authFetch(`${API_BASE}/api/auth/preferences`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ favoriteTeams: selected, theme: { mode: themeMode, team: themeMode === "team" ? themeTeam : null } }),
       });
       const data = await res.json();

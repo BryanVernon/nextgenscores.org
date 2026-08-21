@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./PickEmPage.css";
 import { CONFERENCES } from "../teamOptions";
+import authFetch from "../authFetch";
 
 const API_BASE = import.meta.env.MODE === "development" ? `${window.location.protocol}//${window.location.hostname}:3002` : "https://nextgenscores-org.onrender.com";
 
@@ -20,12 +21,12 @@ export default function PickEmPage() {
   const openPicks = selectedPool => { setPool(selectedPool); setView("picks"); };
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/pools/mine`, { credentials: "include" }).then(response => response.ok ? response.json() : []).then(setMyPools).finally(() => setMyPoolsLoading(false));
+    authFetch(`${API_BASE}/api/pools/mine`).then(response => response.ok ? response.json() : []).then(setMyPools).finally(() => setMyPoolsLoading(false));
   }, []);
   useEffect(() => {
     const poolId = new URLSearchParams(window.location.search).get("pool");
     if (!poolId) return;
-    fetch(`${API_BASE}/api/pools/mine`, { credentials: "include" }).then(response => response.ok ? response.json() : []).then(pools => {
+    authFetch(`${API_BASE}/api/pools/mine`).then(response => response.ok ? response.json() : []).then(pools => {
       const selectedPool = pools.find(item => item.id === poolId);
       if (selectedPool) openPicks(selectedPool);
     }).catch(() => {});
@@ -43,22 +44,22 @@ export default function PickEmPage() {
 function JoinPool({ goBack, openPicks }) {
   const [pools, setPools] = useState([]); const [loading, setLoading] = useState(true); const [joiningId, setJoiningId] = useState(null);
   useEffect(() => { fetch(`${API_BASE}/api/pools`).then(response => response.json()).then(setPools).finally(() => setLoading(false)); }, []);
-  async function join(pool) { setJoiningId(pool.id); try { await readApiResponse(await fetch(`${API_BASE}/api/pools/${pool.id}/join`, { method: "POST", credentials: "include" })); openPicks(pool); } catch (error) { alert(error.message); } finally { setJoiningId(null); } }
+  async function join(pool) { setJoiningId(pool.id); try { await readApiResponse(await authFetch(`${API_BASE}/api/pools/${pool.id}/join`, { method: "POST" })); openPicks(pool); } catch (error) { alert(error.message); } finally { setJoiningId(null); } }
   if (loading) return <p>Loading pools...</p>;
   return <div className="pickem-content"><button className="btn back-btn" onClick={goBack}>← Back</button><h2>Available pools</h2><table className="pools-table"><thead><tr><th>Name</th><th>Conference</th><th>Scoring</th><th>Players</th><th>Limit</th><th>Action</th></tr></thead><tbody>{pools.map(item => <tr key={item.id}><td>{item.name}</td><td>{item.conference}</td><td>{item.scoringType === "spread" ? "Against the spread" : "Straight up"}</td><td>{item.participants}/{item.limit ?? 10}</td><td>{item.limit ?? 10}</td><td><button className="btn join-btn" onClick={() => join(item)} disabled={joiningId === item.id}>{joiningId === item.id ? "Joining..." : "Join"}</button></td></tr>)}</tbody></table><div className="available-pool-cards">{pools.map(item => <article className="available-pool-card" key={item.id}><div><h3>{item.name}</h3><p>{item.conference}</p></div><dl><div><dt>Scoring</dt><dd>{item.scoringType === "spread" ? "Against the spread" : "Straight up"}</dd></div><div><dt>Players</dt><dd>{item.participants}/{item.limit ?? 10}</dd></div></dl><button className="btn join-btn" onClick={() => join(item)} disabled={joiningId === item.id}>{joiningId === item.id ? "Joining..." : "Join pool"}</button></article>)}</div></div>;
 }
 
 function CreatePool({ goBack, openPicks }) {
   const [name, setName] = useState(""); const [scoringType, setScoringType] = useState("straight"); const [limit, setLimit] = useState("10"); const [conference, setConference] = useState("AP Top 25"); const [error, setError] = useState(null);
-  async function create(event) { event.preventDefault(); setError(null); try { const created = await readApiResponse(await fetch(`${API_BASE}/api/pools`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ name, scoringType, conference, limit: Number(limit) }) })); openPicks({ id: created.id, name, conference, scoringType }); } catch (requestError) { setError(requestError.message); } }
+  async function create(event) { event.preventDefault(); setError(null); try { const created = await readApiResponse(await authFetch(`${API_BASE}/api/pools`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, scoringType, conference, limit: Number(limit) }) })); openPicks({ id: created.id, name, conference, scoringType }); } catch (requestError) { setError(requestError.message); } }
   return <div className="pickem-content"><button className="btn back-btn" onClick={goBack}>← Back</button><h2>Create a new pool</h2><form className="create-pool-form" onSubmit={create}><label>Pool Name:<input value={name} onChange={event => setName(event.target.value)} required /></label><label>Scoring Type:<select value={scoringType} onChange={event => setScoringType(event.target.value)}><option value="straight">Straight up</option><option value="spread">Against the spread</option></select></label><label>Conference:<select value={conference} onChange={event => setConference(event.target.value)}>{CONFERENCES.map(item => <option key={item} value={item}>{item}</option>)}</select></label><label>Player limit:<input type="number" value={limit} onChange={event => setLimit(event.target.value)} min={1} /></label>{error && <p className="error-message">{error}</p>}<button type="submit" className="btn create-btn">Create Pool</button></form></div>;
 }
 
 function WeeklyPicks({ pool, goBack }) {
   const [data, setData] = useState(null); const [choices, setChoices] = useState({}); const [leaderboard, setLeaderboard] = useState(null); const [error, setError] = useState(null); const [saving, setSaving] = useState(false); const [picksSaved, setPicksSaved] = useState(false);
-  useEffect(() => { fetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { credentials: "include" }).then(readApiResponse).then(body => { setData(body); setChoices(body.picks || {}); setPicksSaved(body.games.length > 0 && body.games.every(game => body.picks?.[game.id])); }).catch(requestError => setError(requestError.message)); }, [pool.id]);
-  useEffect(() => { fetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { credentials: "include" }).then(readApiResponse).then(setLeaderboard).catch(() => {}); }, [pool.id]);
-  async function save() { if (!data) return; if (data.games.some(game => !choices[game.id])) { setError("Choose a winner for every game before saving."); return; } setSaving(true); setError(null); try { await readApiResponse(await fetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ picks: data.games.map(game => ({ gameId: game.id, pick: choices[game.id] })) }) })); setPicksSaved(true); const standings = await fetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { credentials: "include" }); if (standings.ok) setLeaderboard(await readApiResponse(standings)); } catch (requestError) { setError(requestError.message); } finally { setSaving(false); } }
+  useEffect(() => { authFetch(`${API_BASE}/api/pools/${pool.id}/picks/current`).then(readApiResponse).then(body => { setData(body); setChoices(body.picks || {}); setPicksSaved(body.games.length > 0 && body.games.every(game => body.picks?.[game.id])); }).catch(requestError => setError(requestError.message)); }, [pool.id]);
+  useEffect(() => { authFetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`).then(readApiResponse).then(setLeaderboard).catch(() => {}); }, [pool.id]);
+  async function save() { if (!data) return; if (data.games.some(game => !choices[game.id])) { setError("Choose a winner for every game before saving."); return; } setSaving(true); setError(null); try { await readApiResponse(await authFetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ picks: data.games.map(game => ({ gameId: game.id, pick: choices[game.id] })) }) })); setPicksSaved(true); const standings = await authFetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`); if (standings.ok) setLeaderboard(await readApiResponse(standings)); } catch (requestError) { setError(requestError.message); } finally { setSaving(false); } }
   return <div className="pickem-content"><button className="btn back-btn" onClick={goBack}>← Back</button>{error && <p className="error-message">{error}</p>}{!data && !error && <p>Loading this week's games...</p>}{data && <><p className="eyebrow">{data.pool.conference} · {data.season} season</p><h2>{data.pool.name} — Week {data.week}</h2>{data.games.length === 0 ? <p>No games are available for this week yet.</p> : picksSaved ? <div className="picks-confirmation"><span aria-hidden="true">✓</span><div><h3>Your picks are in.</h3><p>You picked every game for Week {data.week}. You can still update them before kickoff.</p></div><button className="btn picks-btn" onClick={() => setPicksSaved(false)}>Make changes</button></div> : <><p className="pick-help">Choose a winner for every game. You can update your selections until kickoff.</p><div className="weekly-games">{data.games.map(game => <PickGame key={game.id} game={game} choice={choices[game.id]} onPick={pick => setChoices({ ...choices, [game.id]: pick })} />)}</div><button className="btn create-btn" onClick={save} disabled={saving}>{saving ? "Saving..." : "Save this week's picks"}</button></>}<Leaderboard leaderboard={leaderboard} /></>}</div>;
 }
 

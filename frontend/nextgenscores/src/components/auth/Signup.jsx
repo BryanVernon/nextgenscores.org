@@ -34,6 +34,7 @@ export default function Signup() {
         favoriteTeams: favoriteTeam ? [favoriteTeam] : [],
       });
       localStorage.setItem("ngs-returning-user", "true");
+      sessionStorage.setItem("ngs_session_token", res.data.token);
       setUser(res.data.user);
       navigate("/dashboard");
     } catch (requestError) {
