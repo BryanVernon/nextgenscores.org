@@ -2,8 +2,25 @@ import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
 
 const API_BASE = window.location.hostname === "localhost"
-  ? "http://localhost:5000"
+  ? "http://localhost:3002"
   : "https://nextgenscores-org.onrender.com";
+
+const CONFERENCE_ORDER = [
+  "SEC", "Big Ten", "ACC", "Big 12", "Pac-12", "American", "Mountain West",
+  "Sun Belt", "Conference USA", "MAC", "Independent", "FBS Independents",
+  "Pioneer", "UAC", "Ivy League",
+];
+
+function sortConferences(conferences) {
+  return [...conferences].sort((a, b) => {
+    const aIndex = CONFERENCE_ORDER.indexOf(a);
+    const bIndex = CONFERENCE_ORDER.indexOf(b);
+    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+    return aIndex - bIndex;
+  });
+}
 
 export default function Settings() {
   const { user, setUser } = useContext(AuthContext);
@@ -52,17 +69,19 @@ export default function Settings() {
     }
   }
 
-  const conferenceOptions = Object.keys(teamsByConference).sort();
+  const conferenceOptions = sortConferences(Object.keys(teamsByConference));
   const teamOptions = conference ? teamsByConference[conference] || [] : [];
 
   return (
     <div className="settings-page">
       <p className="eyebrow">Your account</p>
       <h1>Settings</h1>
+      <p className="settings-intro">Personalize the teams that power your dashboard and game updates.</p>
 
       <section className="settings-section">
-        <h2>Favorite teams</h2>
+        <div className="settings-section-heading"><span className="settings-icon" aria-hidden="true">★</span><div><h2>Favorite teams</h2>
         <p>Pick a conference, then a team, and add as many as you'd like.</p>
+        </div></div>
 
         <div className="team-picker">
           <select value={conference} onChange={e => { setConference(e.target.value); setTeamChoice(""); }}>
@@ -78,20 +97,21 @@ export default function Settings() {
           <button className="btn" type="button" onClick={addTeam} disabled={!teamChoice}>Add</button>
         </div>
 
-        {selected.length > 0 && (
+        {selected.length > 0 ? (
           <ul className="selected-teams">
             {selected.map(team => (
               <li key={team}>
-                {team} <button type="button" onClick={() => removeTeam(team)}>×</button>
+                <span>{team}</span><button type="button" onClick={() => removeTeam(team)} aria-label={`Remove ${team}`}>×</button>
               </li>
             ))}
           </ul>
-        )}
+        ) : <p className="teams-empty">No favorites selected yet.</p>}
 
-        <button className="btn" onClick={handleSave} disabled={saving}>
+        <div className="settings-save-row"><button className="btn" onClick={handleSave} disabled={saving}>
           {saving ? "Saving..." : "Save changes"}
         </button>
         {message && <p className="settings-message">{message}</p>}
+        </div>
       </section>
     </div>
   );

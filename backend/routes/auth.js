@@ -1,8 +1,21 @@
 // backend/routes/auth.js
 import express from "express";
 import jwt from "jsonwebtoken";
-import User from "../models/user.js";
+import User from "../models/User.js";
+import { isConfiguredAdmin } from "../utils/admin.js";
 const router = express.Router();
+
+async function syncConfiguredAdmin(user) {
+  if (isConfiguredAdmin(user.email) && user.role !== "admin") {
+    user.role = "admin";
+    await user.save();
+  }
+  return user;
+}
+
+function safeUser(user) {
+  return { id: user._id, name: user.name, email: user.email, role: user.role, favoriteTeams: user.favoriteTeams };
+}
 
 // helpers
 function signToken(userId) {
@@ -37,13 +50,12 @@ router.post("/signup", async (req, res) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ message: "Email already in use" });
 
-    const user = await User.createWithPassword({ name, email, password, favoriteTeams });
+    const user = await syncConfiguredAdmin(await User.createWithPassword({ name, email, password, favoriteTeams }));
     const token = signToken(user._id);
     sendTokenCookie(res, token);
 
     // return user object (omit passwordHash)
-    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeams: user.favoriteTeams };
-    res.status(201).json({ user: safeUser });
+    res.status(201).json({ user: safeUser(user) });
   } catch (err) {
     console.error("Signup error", err);
     res.status(500).json({ message: "Server error" });
@@ -62,11 +74,11 @@ router.post("/login", async (req, res) => {
     const match = await user.comparePassword(password);
     if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
+    await syncConfiguredAdmin(user);
     const token = signToken(user._id);
     sendTokenCookie(res, token);
 
-    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeams: user.favoriteTeams };
-    res.json({ user: safeUser });
+    res.json({ user: safeUser(user) });
   } catch (err) {
     console.error("Login error", err);
     res.status(500).json({ message: "Server error" });
@@ -95,9 +107,9 @@ router.get("/me", async (req, res) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(payload.sub);
     if (!user) return res.status(401).json({ message: "Not authenticated" });
+    await syncConfiguredAdmin(user);
 
-    const safeUser = { id: user._id, name: user.name, email: user.email, favoriteTeams: user.favoriteTeams };
-    res.json({ user: safeUser });
+    res.json({ user: safeUser(user) });
   } catch (err) {
     console.error("Me error", err);
     res.status(401).json({ message: "Not authenticated" });
@@ -123,7 +135,7 @@ router.put("/favorite-teams", async (req, res) => {
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    res.json({ user: { id: user._id, name: user.name, email: user.email, favoriteTeams: user.favoriteTeams } });
+    res.json({ user: safeUser(user) });
   } catch (err) {
     console.error("Update favorite teams error", err);
     res.status(500).json({ message: "Server error" });

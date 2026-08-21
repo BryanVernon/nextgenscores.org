@@ -3,7 +3,7 @@ import "../App.css";
 
 export default function App() {
   const API_URL = window.location.hostname === "localhost"
-    ? "http://localhost:5000/api/games"
+    ? "http://localhost:3002/api/games"
     : "https://nextgenscores-org.onrender.com/api/games";
 
   const [games, setGames] = useState([])

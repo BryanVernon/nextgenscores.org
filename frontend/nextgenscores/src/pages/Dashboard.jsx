@@ -3,13 +3,15 @@ import { AuthContext } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
 const API_BASE = window.location.hostname === "localhost"
-  ? "http://localhost:5000"
+  ? "http://localhost:3002"
   : "https://nextgenscores-org.onrender.com";
 
 export default function Dashboard() {
   const { user, logout, loading } = useContext(AuthContext);
   const [summaries, setSummaries] = useState({});
-  const [editingTeams, setEditingTeams] = useState(false);
+  const [pools, setPools] = useState([]);
+  const [poolsLoading, setPoolsLoading] = useState(true);
+  const [poolsError, setPoolsError] = useState(null);
 
   useEffect(() => {
     if (!user?.favoriteTeams?.length) return;
@@ -24,6 +26,18 @@ export default function Dashboard() {
         console.error(`Failed to load summary for ${team}`, err);
       }
     });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`${API_BASE}/api/pools/mine`, { credentials: "include" })
+      .then(async res => {
+        if (!res.ok) throw new Error("Couldn't load your pools. Make sure the backend has been restarted.");
+        return res.json();
+      })
+      .then(setPools)
+      .catch(error => setPoolsError(error.message))
+      .finally(() => setPoolsLoading(false));
   }, [user]);
 
   if (loading) return <div className="page-message">Loading...</div>;
@@ -48,16 +62,11 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="dashboard-panel pools-panel">
-          <span className="panel-label">Pick 'Em pools</span>
-          <strong>Coming soon</strong>
-          <p>Create a pool or join friends for the next slate.</p>
-        </div>
+        <PoolPanel pools={pools} loading={poolsLoading} error={poolsError} />
       </section>
 
       <div className="dashboard-actions">
         <Link className="dashboard-link" to="/schedule">View schedule <span aria-hidden="true">→</span></Link>
-        <button className="quiet-button" onClick={logout}>Log out</button>
       </div>
     </div>
   );
@@ -94,4 +103,16 @@ function TeamPanel({ team, summary }) {
       )}
     </div>
   );
+}
+
+function PoolPanel({ pools, loading, error }) {
+  return <div className="dashboard-panel pools-panel">
+    <span className="panel-label">Pick 'Em pools</span>
+    {loading ? <p>Loading your pools...</p> : error ? <><strong>Pool status unavailable</strong><p>{error}</p></> : pools.length === 0 ? <>
+      <strong>No pools yet</strong><p>Join a pool to make your picks and compete with friends.</p>
+      <Link className="dashboard-link" to="/pickem">Find a pool <span aria-hidden="true">→</span></Link>
+    </> : <div className="dashboard-pool-list">{pools.map(pool => <Link className="dashboard-pool-link" to={`/pickem?pool=${pool.id}`} key={pool.id}>
+      <span><strong>{pool.name}</strong><small>{pool.conference} · {pool.participants} players</small></span><span aria-hidden="true">→</span>
+    </Link>)}</div>}
+  </div>;
 }
