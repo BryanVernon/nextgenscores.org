@@ -243,8 +243,8 @@ function GameCard({ game }) {
 
         {/* TEAMS FULL WIDTH */}
         <div className="teams-fullwidth">
-          <TeamBlock name={game.homeTeam} score={awayScore} logo={game.homeLogo} rank={game.homeApRank} />
-          <TeamBlock name={game.awayTeam} score={homeScore} logo={game.awayLogo} rank={game.awayApRank} />
+          <TeamBlock name={game.homeTeam} score={homeScore} logo={game.homeLogo} rank={game.homeApRank} />
+          <TeamBlock name={game.awayTeam} score={awayScore} logo={game.awayLogo} rank={game.awayApRank} />
         </div>
         {/* BOTTOM — BETTING INFO */}
         {(spread !== null || overUnder !== null) && (
