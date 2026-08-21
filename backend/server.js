@@ -71,29 +71,19 @@ async function fetchApRankings(year) {
   rankingsUrl.searchParams.set("lang", "en");
 
   try {
-    const requestHeaders = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Accept: "application/json",
-    };
-
-    let response = await fetch(rankingsUrl, {
-      headers: requestHeaders,
+    const response = await fetch(rankingsUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; NextGenScoresBot/1.0)",
+        Accept: "application/json",
+      },
     });
-
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      response = await fetch(rankingsUrl);
-    }
-
-    if (!response.ok) {
-      throw new Error(`ESPN rankings request failed: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`ESPN rankings request failed: ${response.status}`);
 
     const data = await response.json();
     const apPoll = data.rankings?.find(ranking => ranking.type === "ap");
     const ranks = apPoll?.ranks ?? [];
 
-    console.log(`AP rankings loaded: ${ranks.length} teams found for ${year}`);
+    console.log(`AP rankings fetched: ${ranks.length} ranked teams for ${year}`);
 
     return new Map(
       ranks
