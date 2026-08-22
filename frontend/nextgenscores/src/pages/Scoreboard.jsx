@@ -30,25 +30,11 @@ export default function App() {
       setError(null);
 
       try {
-        // --- Try reading from localStorage first ---
-        const cached = localStorage.getItem("gamesCacheV3");
-        let data = cached ? JSON.parse(cached) : null;
-
-        const hasApRankings = Array.isArray(data) && data.some(game => (
-          game.homeApRank != null || game.awayApRank != null
-        ));
-
-        if (!hasApRankings) data = null;
-
-        // --- Fetch from API only if no cache ---
-        if (!data) {
-          const res = await fetch(API_URL);
-          if (!res.ok) throw new Error(`API request failed: ${res.status}`);
-          data = await res.json();
-
-          // --- Save to localStorage ---
-          localStorage.setItem("gamesCacheV3", JSON.stringify(data));
-        }
+        // Lines and rankings can change after a schedule refresh. Always use the
+        // current database response so this screen stays in sync with Pick 'Em.
+        const res = await fetch(API_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`API request failed: ${res.status}`);
+        const data = await res.json();
 
         if (ignore) return;
 
