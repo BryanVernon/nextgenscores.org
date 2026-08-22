@@ -37,8 +37,23 @@ export default function Login() {
         <p className="eyebrow">Welcome back</p>
         <h1>Log in to <span>NextGenScores</span></h1>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <input {...register("email", { required: true })} placeholder="Email" />
-        <input type="password" {...register("password", { required: true })} placeholder="Password" />
+        <input
+          {...register("email", { required: true })}
+          type="email"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          inputMode="email"
+          enterKeyHint="next"
+          placeholder="Email"
+        />
+        <input
+          {...register("password", { required: true })}
+          type="password"
+          autoComplete="current-password"
+          enterKeyHint="go"
+          placeholder="Password"
+        />
         <button className="auth-submit" type="submit">Log in</button>
       </form>
       {error && <p className="auth-error">{error}</p>}
