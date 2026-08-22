@@ -12,7 +12,7 @@
 .leaderboard-row { display: grid; grid-template-columns: 44px 1fr auto auto; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--muted); }
 .leaderboard-row strong { color: var(--ink); }
 .leaderboard-row small { min-width: 52px; color: var(--muted); font-size: .75rem; text-align: right; }
-.leader-row { border-color: #bde2cf; background: #eff9f4; }
+.leader-row { border-color: var(--accent-line); background: var(--accent-soft); }
 .leaderboard-rank { color: var(--accent); font-size: .82rem; font-weight: 800; }
 .leaderboard-status, .leaderboard-empty, .leaderboard-error { padding: 26px 18px; color: var(--muted); text-align: center; }
 .leaderboard-empty { border: 1px dashed #b9c8c2; border-radius: 12px; }

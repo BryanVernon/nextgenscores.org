@@ -34,7 +34,7 @@
   color: var(--ink);
   font: inherit;
 }
-.auth-panel input:focus, .auth-panel select:focus { outline: 3px solid rgba(30, 166, 117, 0.18); border-color: var(--accent); }
+.auth-panel input:focus, .auth-panel select:focus { outline: 3px solid var(--focus-ring); border-color: var(--accent); }
 .name-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .auth-submit {
   margin-top: 8px;
@@ -42,13 +42,13 @@
   border: 0;
   border-radius: 7px;
   background: var(--ink);
-  color: #fff;
+  color: var(--ink-contrast);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
   transition: background 180ms ease, transform 180ms ease;
 }
-.auth-submit:hover { background: var(--accent); transform: translateY(-1px); }
+.auth-submit:hover { background: var(--accent); color: var(--accent-contrast); transform: translateY(-1px); }
 .auth-error { margin: 14px 0 0; color: #a34035; font-size: 0.86rem; }
 .auth-switch { margin: 22px 0 0; color: var(--muted); font-size: 0.87rem; text-align: center; }
 .auth-switch a { color: var(--accent); font-weight: 800; }

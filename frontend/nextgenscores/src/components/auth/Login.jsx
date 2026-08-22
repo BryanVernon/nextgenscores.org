@@ -3,6 +3,7 @@ import { useContext, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import axios from "../../api";
 import { useNavigate, Navigate, Link } from "react-router-dom";
+import LoadingScreen from "../LoadingScreen";
 import "./Auth.css";
 
 export default function Login() {
@@ -12,7 +13,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   // Redirect if already logged in
-  if (loading) return <div className="page-message">Loading...</div>;
+  if (loading) return <LoadingScreen />;
   if (user) return <Navigate to="/dashboard" replace />;
 
   const onSubmit = async (data) => {

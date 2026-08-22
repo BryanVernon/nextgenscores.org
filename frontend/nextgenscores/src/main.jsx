@@ -15,11 +15,12 @@ import Leaderboard from "./pages/Leaderboard.jsx";
 import ThemeApplier from "./components/ThemeApplier.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import LoadingScreen from "./components/LoadingScreen.jsx";
 // Landing component must use AuthContext
 function Landing() {
   const { user, loading } = useContext(AuthContext);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <LoadingScreen />;
   return user ? <Navigate to="/dashboard" replace /> : <Signup />;
 }
 

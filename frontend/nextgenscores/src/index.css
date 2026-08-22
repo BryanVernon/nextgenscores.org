@@ -8,6 +8,11 @@
 	--ink: #17312b;
 	--muted: #6b7f78;
 	--accent: #1ea675;
+	--accent-contrast: #ffffff;
+	--ink-contrast: #ffffff;
+	--accent-soft: #e7f7ef;
+	--accent-line: #cfe7db;
+	--focus-ring: rgba(30, 166, 117, 0.2);
 	--paper: #f5f7f2;
 	--surface: #ffffff;
 	--line: #dce5e0;
@@ -22,6 +27,45 @@
 body { margin: 0; min-width: 320px; background: var(--paper); }
 button, select { font-family: inherit; }
 .app-main { width: min(1280px, calc(100% - 48px)); margin: 0 auto; }
+
+.loading-screen {
+	display: grid;
+	min-height: 100dvh;
+	place-items: center;
+	padding: 24px;
+	background: radial-gradient(circle at 50% 25%, var(--accent-soft), var(--paper) 52%);
+}
+.loading-card {
+	width: min(100%, 410px);
+	padding: 38px 30px;
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	background: var(--surface);
+	box-shadow: 0 22px 60px color-mix(in srgb, var(--ink) 14%, transparent);
+	text-align: center;
+}
+.loading-mark {
+	display: grid;
+	width: 60px;
+	height: 60px;
+	margin: 0 auto 22px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--accent-soft);
+	box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.loading-mark i {
+	width: 22px;
+	height: 22px;
+	border: 3px solid var(--accent-line);
+	border-top-color: var(--accent);
+	border-radius: 50%;
+	animation: loading-spin 800ms linear infinite;
+}
+.loading-card .eyebrow { margin-bottom: 10px; }
+.loading-card h1 { margin: 0; color: var(--ink); font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.7rem, 6vw, 2.25rem); letter-spacing: -0.05em; }
+.loading-card p:last-child { margin: 11px 0 0; color: var(--muted); }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 480px) {
 	.app-main { width: min(1280px, calc(100% - 32px)); }
