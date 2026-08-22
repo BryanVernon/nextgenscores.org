@@ -246,34 +246,6 @@ async function fetchApRankings(year) {
   }
 }
 
-function addApRanks(game, apRankings) {
-  const rawGame = typeof game.toObject === "function" ? game.toObject() : game;
-  return {
-    ...rawGame,
-    homeApRank: apRankings.get(normalizeTeamName(rawGame.homeTeam)) ?? null,
-    awayApRank: apRankings.get(normalizeTeamName(rawGame.awayTeam)) ?? null,
-  };
-}
-
-async function syncApRanks(games, apRankings) {
-  if (games.length === 0) return;
-
-  await Game.bulkWrite(
-    games.map(game => {
-      const homeApRank = apRankings.get(normalizeTeamName(game.homeTeam)) ?? null;
-      const awayApRank = apRankings.get(normalizeTeamName(game.awayTeam)) ?? null;
-
-      return {
-        updateOne: {
-          filter: { _id: game._id },
-          update: { $set: { homeApRank, awayApRank } },
-        },
-      };
-    }),
-    { ordered: false }
-  );
-}
-
 // --- Health check ---
 app.get("/", (req, res) => res.send("NextGenScores API is live!"));
 
@@ -393,10 +365,10 @@ app.get("/api/sync-game-outlets", async (req, res) => {
 app.get("/api/games", async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
-    const games = await Game.find({ season: year }).sort({ week: 1 });
-    const apRankings = await fetchApRankings(year);
-    await syncApRanks(games, apRankings);
-    res.json(games.map(game => addApRanks(game, apRankings)));
+    // This is the read path used by the schedule and dashboard. Rankings are
+    // stored during the deliberate season import, so page views never call CFBD.
+    const games = await Game.find({ season: year }).sort({ week: 1 }).lean();
+    res.json(games);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch games from MongoDB" });
