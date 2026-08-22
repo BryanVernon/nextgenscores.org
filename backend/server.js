@@ -55,6 +55,7 @@ const gameSchema = new mongoose.Schema({
   awayApRank: Number,
   spread: Number,
   overUnder: Number,
+  oddsSource: String,
   outlet: String,
 });
 
@@ -65,6 +66,125 @@ function normalizeTeamName(name) {
     .toLowerCase()
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]/g, "");
+}
+
+// CFBD and odds providers occasionally use different, but equivalent, school names.
+// Keep this list intentionally small so an uncertain match never assigns a line to
+// the wrong game.
+const TEAM_NAME_ALIASES = new Map([
+  ["olemiss", "mississippi"],
+  ["uconn", "connecticut"],
+  ["umass", "massachusetts"],
+  ["miamioh", "miamiohio"],
+  ["hawaii", "hawaii"],
+  ["louisianamonroe", "ulm"],
+  ["ulmonroe", "ulm"],
+  ["louisianalafayette", "louisiana"],
+  ["ullafayette", "louisiana"],
+  ["utep", "texaselpaso"],
+  ["utsa", "texassanantonio"],
+  ["brighamyoung", "byu"],
+  ["centralflorida", "ucf"],
+  ["floridainternational", "fiu"],
+  ["louisianatech", "latech"],
+  ["middletennessee", "middletennessee"],
+  ["northcarolinastate", "ncstate"],
+  ["southerncalifornia", "usc"],
+  ["southernmethodist", "smu"],
+  ["texaschristian", "tcu"],
+]);
+
+function comparableTeamName(name) {
+  const normalized = normalizeTeamName(name);
+  const alias = [...TEAM_NAME_ALIASES.entries()]
+    .sort(([left], [right]) => right.length - left.length)
+    .find(([variant]) => normalized.startsWith(variant));
+  return alias?.[1] ?? normalized;
+}
+
+function matchupKey(homeTeam, awayTeam) {
+  return `${comparableTeamName(homeTeam)}:${comparableTeamName(awayTeam)}`;
+}
+
+function selectTheOddsApiLine(event) {
+  const hasUsableLine = bookmaker => bookmaker.markets?.some(market =>
+    market.key === "spreads" || market.key === "totals"
+  );
+  const preferredBooks = ["fanduel", "draftkings", "betmgm", "caesars"];
+  const bookmaker = preferredBooks
+    .map(key => event.bookmakers?.find(item => item.key === key))
+    .find(hasUsableLine)
+    ?? event.bookmakers?.find(hasUsableLine);
+
+  if (!bookmaker) return null;
+
+  const spreadMarket = bookmaker.markets.find(market => market.key === "spreads");
+  const totalMarket = bookmaker.markets.find(market => market.key === "totals");
+  const homeSpread = spreadMarket?.outcomes?.find(outcome => outcome.name === event.home_team)?.point;
+  const total = totalMarket?.outcomes?.find(outcome => outcome.name === "Over")?.point;
+
+  if (homeSpread == null && total == null) return null;
+
+  return {
+    spread: homeSpread ?? null,
+    overUnder: total ?? null,
+    source: `The Odds API (${bookmaker.title})`,
+  };
+}
+
+function providerTeamMatches(scheduleTeam, providerTeam) {
+  const schedule = comparableTeamName(scheduleTeam);
+  const provider = comparableTeamName(providerTeam);
+  return provider === schedule || provider.startsWith(schedule);
+}
+
+function timesAreCompatible(scheduleStart, oddsStart) {
+  const scheduleTime = new Date(scheduleStart).getTime();
+  const oddsTime = new Date(oddsStart).getTime();
+  if (Number.isNaN(scheduleTime) || Number.isNaN(oddsTime)) return true;
+
+  // Kickoff times can be announced or adjusted independently by the providers.
+  return Math.abs(scheduleTime - oddsTime) < 36 * 60 * 60 * 1000;
+}
+
+async function fetchTheOddsApiOdds(games) {
+  const apiKey = process.env.THE_ODDS_API_KEY;
+  if (!apiKey) return new Map();
+
+  const query = new URLSearchParams({
+    apiKey,
+    regions: "us",
+    markets: "spreads,totals",
+    oddsFormat: "american",
+  });
+  const response = await fetch(
+    `https://api.the-odds-api.com/v4/sports/americanfootball_ncaaf/odds?${query}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`The Odds API request failed: ${response.status}`);
+  }
+
+  const oddsByMatchup = new Map();
+  const events = await response.json();
+  events.forEach(event => {
+    const line = selectTheOddsApiLine(event);
+    if (!line) return;
+
+    const matchedGames = games.filter(game =>
+      providerTeamMatches(game.homeTeam, event.home_team) &&
+      providerTeamMatches(game.awayTeam, event.away_team) &&
+      timesAreCompatible(game.startDate, event.commence_time)
+    );
+
+    // A line is used only when it maps unambiguously to one scheduled game.
+    if (matchedGames.length === 1) {
+      const game = matchedGames[0];
+      oddsByMatchup.set(matchupKey(game.homeTeam, game.awayTeam), line);
+    }
+  });
+
+  return oddsByMatchup;
 }
 
 async function fetchGameOutlets(year) {
@@ -196,32 +316,56 @@ app.get("/api/fetch-games", async (req, res) => {
       linesMap[line.id] = line.lines && line.lines.length > 0 ? line.lines[0] : {};
     });
 
-    const enrichedGames = gamesData.map(g => ({
-      id: g.id,
-      season: g.season,
-      week: g.week,
-      homeTeam: g.homeTeam,
-      awayTeam: g.awayTeam,
-      homePoints: g.homePoints ?? null,
-      awayPoints: g.awayPoints ?? null,
-      startDate: g.startDate,
-      venue: g.venue,
-      homeConference: g.homeConference,
-      awayConference: g.awayConference,
-      homeLogo: teamLogoMap[g.homeTeam] ?? "",
-      awayLogo: teamLogoMap[g.awayTeam] ?? "",
-      homeApRank: apRankings.get(normalizeTeamName(g.homeTeam)) ?? null,
-      awayApRank: apRankings.get(normalizeTeamName(g.awayTeam)) ?? null,
-      spread: linesMap[g.id]?.spread ?? null,
-      overUnder: linesMap[g.id]?.overUnder ?? null,
-      outlet: outletByGameId.get(Number(g.id)) ?? g.outlet ?? g.tv ?? g.network ?? null,
-    }));
+    let theOddsApiOdds = new Map();
+    if (process.env.THE_ODDS_API_KEY) {
+      try {
+        theOddsApiOdds = await fetchTheOddsApiOdds(gamesData);
+        console.log(`The Odds API fallback supplied lines for ${theOddsApiOdds.size} matchups.`);
+      } catch (error) {
+        // Do not make an odds-provider outage prevent the existing CFBD schedule import.
+        console.error("The Odds API fallback error:", error.message);
+      }
+    }
+
+    const enrichedGames = gamesData.map(g => {
+      const cfbdLine = linesMap[g.id] ?? {};
+      const fallbackLine = theOddsApiOdds.get(matchupKey(g.homeTeam, g.awayTeam));
+      const spread = cfbdLine.spread ?? fallbackLine?.spread ?? null;
+      const overUnder = cfbdLine.overUnder ?? fallbackLine?.overUnder ?? null;
+
+      return {
+        id: g.id,
+        season: g.season,
+        week: g.week,
+        homeTeam: g.homeTeam,
+        awayTeam: g.awayTeam,
+        homePoints: g.homePoints ?? null,
+        awayPoints: g.awayPoints ?? null,
+        startDate: g.startDate,
+        venue: g.venue,
+        homeConference: g.homeConference,
+        awayConference: g.awayConference,
+        homeLogo: teamLogoMap[g.homeTeam] ?? "",
+        awayLogo: teamLogoMap[g.awayTeam] ?? "",
+        homeApRank: apRankings.get(normalizeTeamName(g.homeTeam)) ?? null,
+        awayApRank: apRankings.get(normalizeTeamName(g.awayTeam)) ?? null,
+        spread,
+        overUnder,
+        oddsSource: cfbdLine.spread != null || cfbdLine.overUnder != null
+          ? "CollegeFootballData"
+          : fallbackLine?.source ?? null,
+        outlet: outletByGameId.get(Number(g.id)) ?? g.outlet ?? g.tv ?? g.network ?? null,
+      };
+    });
 
     const result = await Game.insertMany(enrichedGames, { ordered: false }).catch(err => {
       if (err.code !== 11000) console.error(err);
     });
 
-    res.json({ message: `Inserted ${result?.length || 0} games for ${year} with logos and betting data.` });
+    res.json({
+      message: `Inserted ${result?.length || 0} games for ${year} with logos and betting data.`,
+      theOddsApiFallback: Boolean(process.env.THE_ODDS_API_KEY),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch or store enriched games", details: err.message });
