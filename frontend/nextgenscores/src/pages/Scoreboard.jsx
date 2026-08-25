@@ -1,87 +1,51 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import "../App.css";
 import { CONFERENCES, getTeamGroups } from "../teamOptions";
 
 const API_URL = import.meta.env.MODE === "development"
-  ? `${window.location.protocol}//${window.location.hostname}:3002/api/games`
-  : "https://nextgenscores-org.onrender.com/api/games";
+  ? `${window.location.protocol}//${window.location.hostname}:3002/api/schedule`
+  : "https://nextgenscores-org.onrender.com/api/schedule";
 
 export default function App() {
   const [games, setGames] = useState([])
-  const [filteredGames, setFilteredGames] = useState([])
-  const [week, setWeek] = useState(0)
+  const [week, setWeek] = useState(null)
   const [weeks, setWeeks] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [hasLoaded, setHasLoaded] = useState(false);
-
-
   const [currentWeek, setCurrentWeek] = useState(0)
   const [conference, setConference] = useState('AP Top 25')
   const [team, setTeam] = useState('')
+  const [teams, setTeams] = useState([])
+  const lastLoadedKey = useRef(null)
   const conferences = CONFERENCES
 
-  // Fetch games
   useEffect(() => {
     let ignore = false;
 
     async function load() {
+      const requestKey = `${week ?? "current"}|${conference}|${team}`;
+      if (lastLoadedKey.current === requestKey) return;
       setLoading(true);
       setError(null);
 
       try {
-        // Lines and rankings can change after a schedule refresh. Always use the
-        // current database response so this screen stays in sync with Pick 'Em.
-        const res = await fetch(API_URL, { cache: "no-store" });
+        const query = new URLSearchParams();
+        if (week != null) query.set("week", week);
+        if (conference) query.set("conference", conference);
+        if (team) query.set("team", team);
+        const res = await fetch(`${API_URL}?${query}`);
         if (!res.ok) throw new Error(`API request failed: ${res.status}`);
         const data = await res.json();
 
         if (ignore) return;
 
-        setGames(data);
-        setHasLoaded(true);
-
-        // --- Set weeks and current week as before ---
-        const uniqueWeeks = Array.from(new Set(data.map(g => g.week))).sort((a,b)=>a-b)
-        setWeeks(uniqueWeeks)
-
-        const today = new Date();
-
-// Find the first game date for each week
-        const weekDates = uniqueWeeks
-          .map(week => {
-            const gamesForWeek = data
-              .filter(g => Number(g.week) === Number(week))
-              .map(g => new Date(g.startDate))
-              .filter(date => !isNaN(date));
-
-            if (gamesForWeek.length === 0) return null;
-
-            return {
-              week,
-              date: new Date(
-                Math.min(...gamesForWeek.map(d => d.getTime()))
-              )
-            };
-          })
-          .filter(Boolean);
-
-        // Find the most recent week that has already started
-        const previousWeek = weekDates
-          .filter(w => w.date <= today)
-          .sort((a, b) => b.date - a.date)[0];
-
-        // Find the next upcoming week
-        const nextWeek = weekDates
-          .filter(w => w.date > today)
-          .sort((a, b) => a.date - b.date)[0];
-
-        // Before the season starts, show the first upcoming week.
-        // During the season, show the most recently started week.
-        const validWeek = previousWeek?.week ?? nextWeek?.week ?? Math.max(...uniqueWeeks);
-
-        setCurrentWeek(validWeek);
-        setWeek(validWeek);
+        setGames(data.games);
+        setWeeks(data.weeks.map(item => item.week));
+        setTeams(data.teams);
+        setCurrentWeek(data.currentWeek);
+        const loadedWeek = week ?? data.currentWeek;
+        lastLoadedKey.current = `${loadedWeek}|${conference}|${team}`;
+        if (week == null) setWeek(data.currentWeek);
 
       } catch (err) {
         setError(err.message);
@@ -92,40 +56,13 @@ export default function App() {
 
     load();
     return () => { ignore = true };
-  }, []);
+  }, [week, conference, team]);
 
-
-  const teamGroups = useMemo(() => getTeamGroups(games), [games]);
-
-  // Filter games based on week, conference, and team
-  useEffect(() => {
-    let temp = games
-
-    // Filter by week
-    if (week !== 0) {
-      temp = temp.filter(g => Number(g.week) === Number(week))
-    }
-
-    // Filter by conference
-    if (conference === 'AP Top 25') {
-      temp = temp.filter(g => g.homeApRank != null || g.awayApRank != null)
-    } else if (conference !== 'All') {
-      temp = temp.filter(g => g.homeConference === conference || g.awayConference === conference)
-    }
-
-    if (team) {
-      temp = temp.filter(g => g.homeTeam === team || g.awayTeam === team)
-    }
-
-    setFilteredGames(temp)
-  }, [games, week, conference, team])
-
-  const sortedGames = useMemo(() => {
-    return filteredGames.slice().sort((a,b) => new Date(a.startDate) - new Date(b.startDate))
-  }, [filteredGames])
+  const teamGroups = useMemo(() => getTeamGroups(teams), [teams]);
+  const sortedGames = games;
 
   function handleWeekChange(e) {
-    setWeek(e.target.value === 'all' ? 0 : Number(e.target.value))
+    setWeek(e.target.value === 'all' ? 'all' : Number(e.target.value))
   }
 
   function handleConferenceChange(e) {
@@ -136,7 +73,6 @@ export default function App() {
     setTeam(e.target.value)
     if (e.target.value) {
       setConference('All')
-      setWeek(0)
     }
   }
 
@@ -197,7 +133,7 @@ export default function App() {
         {!loading && !error && (
           <>
             {/* FIX: only show message if we have actually loaded once */}
-            {hasLoaded && sortedGames.length === 0 && (
+            {week != null && sortedGames.length === 0 && (
               <div className="schedule-message">No games found for this selection.</div>
             )}
 

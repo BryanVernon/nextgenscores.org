@@ -48,6 +48,7 @@ pickSchema.index(
   { poolId: 1, userId: 1, gameId: 1 },
   { unique: true }
 );
+pickSchema.index({ poolId: 1, season: 1, week: 1 });
 
 const Pick = mongoose.model("pick", pickSchema);
 

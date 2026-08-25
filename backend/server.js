@@ -58,6 +58,7 @@ const gameSchema = new mongoose.Schema({
   oddsSource: String,
   outlet: String,
 });
+gameSchema.index({ season: 1, week: 1, startDate: 1 });
 
 const Game = mongoose.model("game", gameSchema);
 
@@ -372,6 +373,71 @@ app.get("/api/games", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch games from MongoDB" });
+  }
+});
+
+function currentWeekFromMetadata(weeks) {
+  const now = Date.now();
+  const started = weeks.filter(item => new Date(item.startDate).getTime() <= now);
+  return started.at(-1)?.week ?? weeks[0]?.week ?? null;
+}
+
+// The schedule screen needs a small amount of metadata for its filters, but it
+// should never need to download an entire season's game cards at once.
+app.get("/api/schedule", async (req, res) => {
+  try {
+    const season = parseInt(req.query.year) || new Date().getFullYear();
+    const [weeks, teams] = await Promise.all([
+      Game.aggregate([
+        { $match: { season } },
+        { $group: { _id: "$week", startDate: { $min: "$startDate" } } },
+        { $project: { _id: 0, week: "$_id", startDate: 1 } },
+        { $sort: { startDate: 1 } },
+      ]),
+      Game.aggregate([
+        { $match: { season } },
+        { $project: { teams: [
+          { name: "$homeTeam", conference: "$homeConference", rank: "$homeApRank" },
+          { name: "$awayTeam", conference: "$awayConference", rank: "$awayApRank" },
+        ] } },
+        { $unwind: "$teams" },
+        { $match: { "teams.name": { $ne: null } } },
+        { $group: {
+          _id: "$teams.name",
+          conference: { $first: "$teams.conference" },
+          rank: { $min: { $ifNull: ["$teams.rank", 9999] } },
+        } },
+        { $project: {
+          _id: 0,
+          name: "$_id",
+          conference: 1,
+          rank: { $cond: [{ $eq: ["$rank", 9999] }, null, "$rank"] },
+        } },
+        { $sort: { name: 1 } },
+      ]),
+    ]);
+
+    const currentWeek = currentWeekFromMetadata(weeks);
+    const requestedWeek = req.query.week === "all" ? null : Number(req.query.week) || currentWeek;
+    const filter = { season };
+    if (requestedWeek != null) filter.week = requestedWeek;
+
+    if (req.query.team) {
+      filter.$or = [{ homeTeam: req.query.team }, { awayTeam: req.query.team }];
+    } else if (req.query.conference && req.query.conference !== "All") {
+      if (req.query.conference === "AP Top 25") {
+        filter.$or = [{ homeApRank: { $ne: null } }, { awayApRank: { $ne: null } }];
+      } else {
+        filter.$or = [{ homeConference: req.query.conference }, { awayConference: req.query.conference }];
+      }
+    }
+
+    const games = await Game.find(filter).sort({ startDate: 1 }).lean();
+    res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
+    res.json({ games, weeks, teams, currentWeek });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch schedule from MongoDB" });
   }
 });
 // --- Route: Team summary for dashboard (record, last game, next game) ---

@@ -36,6 +36,16 @@ function getCurrentWeek(games) {
     ?? weeks.sort((a, b) => a.start - b.start)[0]?.week;
 }
 
+async function getCurrentWeekForSeason(season) {
+  const weeks = await getGameModel().aggregate([
+    { $match: { season } },
+    { $group: { _id: "$week", startDate: { $min: "$startDate" } } },
+    { $project: { _id: 0, week: "$_id", startDate: 1 } },
+    { $sort: { startDate: 1 } },
+  ]);
+  return getCurrentWeek(weeks);
+}
+
 function filterGamesForPool(games, pool) {
   if (!pool.conference || pool.conference === "All") return games;
   if (pool.conference === "AP Top 25") {
@@ -96,9 +106,9 @@ router.get("/:id/picks/current", requireAuth, async (req, res) => {
     }
 
     const season = Number(req.query.year) || new Date().getFullYear();
-    const games = await getGameModel().find({ season }).sort({ startDate: 1 });
-    const week = getCurrentWeek(games);
-    const weekGames = filterGamesForPool(games.filter(game => Number(game.week) === Number(week)), pool);
+    const week = await getCurrentWeekForSeason(season);
+    const games = await getGameModel().find({ season, week }).sort({ startDate: 1 }).lean();
+    const weekGames = filterGamesForPool(games, pool);
     const picks = await Pick.find({ poolId: pool._id, userId: req.userId, season, week });
 
     res.json({
@@ -134,10 +144,10 @@ router.put("/:id/picks/current", requireAuth, async (req, res) => {
     }
 
     const season = Number(req.query.year) || new Date().getFullYear();
-    const games = await getGameModel().find({ season });
-    const week = getCurrentWeek(games);
+    const week = await getCurrentWeekForSeason(season);
+    const games = await getGameModel().find({ season, week }).lean();
     const validGameIds = new Set(filterGamesForPool(
-      games.filter(game => Number(game.week) === Number(week)),
+      games,
       pool
     ).map(game => Number(game.id)));
     const operations = (Array.isArray(req.body.picks) ? req.body.picks : [])
@@ -167,9 +177,9 @@ router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
     }
 
     const season = Number(req.query.year) || new Date().getFullYear();
-    const games = await getGameModel().find({ season }).sort({ startDate: 1 });
-    const week = getCurrentWeek(games);
-    const weekGames = filterGamesForPool(games.filter(game => Number(game.week) === Number(week)), pool);
+    const week = await getCurrentWeekForSeason(season);
+    const games = await getGameModel().find({ season, week }).sort({ startDate: 1 }).lean();
+    const weekGames = filterGamesForPool(games, pool);
     const gameIds = new Set(weekGames.map(game => Number(game.id)));
     const picks = await Pick.find({ poolId: pool._id, season, week });
     const usersById = await getPoolUsers(pool);

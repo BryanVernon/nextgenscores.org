@@ -5,6 +5,15 @@ export function getTeamGroups(games) {
   const conferenceOrder = CONFERENCES.slice(1);
 
   games.forEach(game => {
+    if (game.name) {
+      const current = teams.get(game.name);
+      teams.set(game.name, {
+        name: game.name,
+        conference: game.conference || current?.conference || "Other teams",
+        rank: game.rank != null ? Math.min(Number(game.rank), current?.rank ?? Infinity) : current?.rank,
+      });
+      return;
+    }
     [[game.homeTeam, game.homeConference, game.homeApRank], [game.awayTeam, game.awayConference, game.awayApRank]].forEach(([name, conference, rank]) => {
       if (!name) return;
       const current = teams.get(name);

@@ -66,6 +66,12 @@
 .picks-confirmation div { flex: 1; }
 .picks-confirmation h3 { margin: 0; color: var(--ink); font-size: 1rem; }
 .picks-confirmation p { margin: 4px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.45; }
+.picks-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.picks-actions .picks-btn { margin: 0; }
+.picks-review-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 22px 0 10px; }
+.picks-review-heading h3 { margin: 0; color: var(--ink); font-size: 1rem; }
+.picks-review-heading .picks-btn { margin: 0; }
+.team-pick:disabled { cursor: default; opacity: 1; }
 
 @media (max-width: 650px) {
   .pickem-page { padding: 30px 0 48px; }
@@ -98,5 +104,5 @@
   .team-pick img { width: 24px; height: 24px; }
   .pick-lines { flex-wrap: wrap; gap: 6px; }
   .picks-confirmation { flex-wrap: wrap; align-items: flex-start; padding: 14px; }
-  .picks-confirmation .picks-btn { margin-left: 44px; }
+  .picks-actions { width: 100%; margin-left: 44px; }
 }

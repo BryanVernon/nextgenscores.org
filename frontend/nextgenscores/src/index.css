@@ -72,5 +72,5 @@ button, select { font-family: inherit; }
 }
 
 @media (max-width: 768px) {
-	.app-main { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+	.app-main { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 }
