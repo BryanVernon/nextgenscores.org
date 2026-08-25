@@ -1,0 +1,17 @@
+{
+  "name": "NextGenScores",
+  "short_name": "NextGenScores",
+  "description": "College football scores, schedules, and Pick 'Em pools.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7f2",
+  "theme_color": "#17312b",
+  "icons": [
+    {
+      "src": "/nextgenscores-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

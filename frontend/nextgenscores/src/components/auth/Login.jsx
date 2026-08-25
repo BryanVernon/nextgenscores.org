@@ -58,6 +58,7 @@ export default function Login() {
         <button className="auth-submit" type="submit">Log in</button>
       </form>
       {error && <p className="auth-error">{error}</p>}
+      <p className="auth-switch"><Link to="/forgot-password">Forgot your password?</Link></p>
       <p className="auth-switch">
         Don't have an account? <Link to="/signup">Sign Up</Link>
       </p>

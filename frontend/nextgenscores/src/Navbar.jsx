@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext";
 import "./Navbar.css";
@@ -15,12 +15,12 @@ const Navbar = () => {
       <ul className="nav-links">
         {user ? (
           <>
-            <li><Link to="/">Dashboard</Link></li>
-            <li><Link to="/schedule">CFB Schedule</Link></li>
-            <li><Link to="/pickem">Pick 'Em</Link></li>
-            <li><Link to="/leaderboard">Leaderboard</Link></li>
-            <li><Link to="/settings">Settings</Link></li>
-            {user.role === "admin" && <li><Link to="/admin">Admin</Link></li>}
+            <li><NavLink to="/" end>Dashboard</NavLink></li>
+            <li><NavLink to="/schedule">CFB Schedule</NavLink></li>
+            <li><NavLink to="/pickem">Pick 'Em</NavLink></li>
+            <li><NavLink to="/leaderboard">Leaderboard</NavLink></li>
+            <li><NavLink to="/settings">Settings</NavLink></li>
+            {user.role === "admin" && <li><NavLink to="/admin">Admin</NavLink></li>}
             <li><button className="logout-button" onClick={logout}>Log out</button></li>
           </>
         ) : null}

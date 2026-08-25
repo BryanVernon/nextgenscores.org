@@ -9,6 +9,8 @@ import PickEmPage from "./pages/PickEmPage.jsx";
 import Scoreboard from "./pages/Scoreboard.jsx";
 import Signup from "./components/auth/Signup.jsx";
 import Login from "./components/auth/Login.jsx";
+import ForgotPassword from "./components/auth/ForgotPassword.jsx";
+import ResetPassword from "./components/auth/ResetPassword.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Settings from "./pages/Settings.jsx";
 import Leaderboard from "./pages/Leaderboard.jsx";
@@ -16,6 +18,14 @@ import ThemeApplier from "./components/ThemeApplier.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("Service worker registration failed:", error);
+    });
+  });
+}
 // Landing component must use AuthContext
 function Landing() {
   const { user, loading } = useContext(AuthContext);
@@ -28,6 +38,8 @@ const router = createBrowserRouter([
   // Auth pages — login/signup
   { path: "/login", element: <Login /> },
   { path: "/signup", element: <Signup /> },
+  { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/reset-password", element: <ResetPassword /> },
 
   // Main app pages
   {

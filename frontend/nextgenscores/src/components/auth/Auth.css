@@ -50,6 +50,7 @@
 }
 .auth-submit:hover { background: var(--accent); color: var(--accent-contrast); transform: translateY(-1px); }
 .auth-error { margin: 14px 0 0; color: #a34035; font-size: 0.86rem; }
+.auth-success { margin: 14px 0 0; color: var(--accent); font-size: 0.86rem; }
 .auth-switch { margin: 22px 0 0; color: var(--muted); font-size: 0.87rem; text-align: center; }
 .auth-switch a { color: var(--accent); font-weight: 800; }
 

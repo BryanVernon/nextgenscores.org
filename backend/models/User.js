@@ -14,11 +14,17 @@ const UserSchema = new mongoose.Schema({
     mode: { type: String, enum: ["default", "team"], default: "default" },
     team: { type: String, default: null },
   },
+  passwordResetTokenHash: { type: String, default: null, select: false },
+  passwordResetExpiresAt: { type: Date, default: null, select: false },
   createdAt: { type: Date, default: Date.now },
 });
 
 UserSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.passwordHash);
+};
+
+UserSchema.methods.setPassword = async function (password) {
+  this.passwordHash = await bcrypt.hash(password, 10);
 };
 
 UserSchema.statics.createWithPassword = async function ({ name, firstName, lastName, email, password, favoriteTeams }) {

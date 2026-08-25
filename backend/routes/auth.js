@@ -1,9 +1,11 @@
 // backend/routes/auth.js
 import express from "express";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import User from "../models/User.js";
 import { isConfiguredAdmin } from "../utils/admin.js";
 import requireAuth from "../middleware/requireAuth.js";
+import { sendPasswordResetEmail } from "../utils/mailer.js";
 const router = express.Router();
 
 async function syncConfiguredAdmin(user) {
@@ -102,6 +104,68 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error("Login error", err);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Return the same success message whether or not the email exists so this
+// endpoint cannot reveal which addresses have accounts.
+router.post("/forgot-password", async (req, res) => {
+  const successMessage = "If an account uses that email address, a reset link has been sent.";
+
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const user = await User.findOne({ email }).select("+passwordResetTokenHash +passwordResetExpiresAt");
+    if (!user) return res.json({ message: successMessage });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.passwordResetTokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    user.passwordResetExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await user.save();
+
+    const appUrl = (process.env.FRONTEND_URL || "https://nextgenscores.org").replace(/\/$/, "");
+    await sendPasswordResetEmail({
+      to: user.email,
+      resetUrl: `${appUrl}/reset-password?token=${encodeURIComponent(token)}`,
+    });
+
+    res.json({ message: successMessage });
+  } catch (err) {
+    console.error("Forgot password error", err);
+    res.status(500).json({ message: "Unable to send a password reset email. Please try again later." });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ message: "Reset token and new password are required" });
+    }
+    if (String(password).length < 8) {
+      return res.status(400).json({ message: "Your new password must be at least 8 characters" });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: { $gt: new Date() },
+    }).select("+passwordResetTokenHash +passwordResetExpiresAt");
+
+    if (!user) {
+      return res.status(400).json({ message: "This password reset link is invalid or has expired" });
+    }
+
+    await user.setPassword(password);
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    await user.save();
+
+    res.json({ message: "Password updated. You can now log in." });
+  } catch (err) {
+    console.error("Reset password error", err);
+    res.status(500).json({ message: "Unable to reset password. Please try again later." });
   }
 });
 
