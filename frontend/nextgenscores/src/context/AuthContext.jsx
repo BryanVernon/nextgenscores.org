@@ -25,6 +25,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await axios.post("/auth/logout");
+      localStorage.removeItem("ngs_session_token");
       sessionStorage.removeItem("ngs_session_token");
       setUser(null);
     } catch (err) {
