@@ -40,6 +40,16 @@
 .available-pool-cards { display: none; }
 .join-btn { margin: 6px 6px 0 0; padding: 8px 12px; background: var(--accent-soft); color: var(--accent); }
 .join-btn:hover { background: var(--accent); color: var(--accent-contrast); }
+.pool-section-note { margin: -10px 0 16px; color: var(--muted); font-size: .86rem; }
+.pool-search, .pool-password { padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fbfcfa; color: var(--ink); font: inherit; }
+.pool-search { width: min(100%, 360px); margin: -2px 0 16px; }
+.pool-password { width: 132px; margin: 0 6px 0 0; font-size: .78rem; }
+.private-pool-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--line); }
+.private-pool-form h3, .private-pool-form p { grid-column: 1 / -1; margin: 0; }
+.private-pool-form h3 { color: var(--ink); font-size: 1rem; }
+.private-pool-form p { color: var(--muted); font-size: .84rem; }
+.private-pool-form input { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 7px; font: inherit; }
+.private-pool-form .btn { justify-self: start; }
 .picks-btn { margin: 6px 6px 0 0; padding: 8px 12px; background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .picks-btn:hover { background: var(--ink); color: var(--ink-contrast); }
 .delete-pool-btn { margin: 6px 0 0; padding: 8px 12px; background: #fff2f0; color: #b42318; }
@@ -87,6 +97,7 @@
   .available-pool-card dd { margin: 0; color: var(--ink); font-size: .82rem; font-weight: 700; }
   .available-pool-card .join-btn { width: 100%; margin: 0; min-height: 44px; }
   .create-pool-form { grid-template-columns: 1fr; }
+  .private-pool-form { grid-template-columns: 1fr; }
   .create-btn { grid-column: auto; }
   .my-pools-list { grid-template-columns: 1fr; }
 }

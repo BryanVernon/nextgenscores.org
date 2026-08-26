@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "scrape:cfb": "node scripts/scrapeGames.js"
+    "scrape:cfb": "node scripts/scrapeGames.js",
+    "notify:pools": "node scripts/sendPoolNotifications.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

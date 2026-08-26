@@ -1,8 +1,10 @@
 import express from "express";
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 import Pool from "../models/pool.js";
 import Pick from "../models/pick.js";
 import requireAuth from "../middleware/requireAuth.js";
+import { selectGamesForPool } from "../utils/poolGameSelection.js";
 
 const router = express.Router();
 const MAX_POOLS_PER_USER = 10;
@@ -46,14 +48,6 @@ async function getCurrentWeekForSeason(season) {
   return getCurrentWeek(weeks);
 }
 
-function filterGamesForPool(games, pool) {
-  if (!pool.conference || pool.conference === "All") return games;
-  if (pool.conference === "AP Top 25") {
-    return games.filter(game => game.homeApRank != null || game.awayApRank != null);
-  }
-  return games.filter(game => game.homeConference === pool.conference || game.awayConference === pool.conference);
-}
-
 function isPoolParticipant(pool, userId) {
   return pool.participants.some(participant => participant.toString() === userId);
 }
@@ -63,10 +57,16 @@ function shapePool(pool) {
     id: pool._id,
     name: pool.name,
     scoringType: pool.scoringType,
+    gameSelection: pool.gameSelection || "all",
     conference: pool.conference,
     participants: pool.participants.length,
     limit: pool.limit ?? 10,
+    visibility: pool.visibility || "public",
   };
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function getPoolUsers(pool) {
@@ -77,7 +77,17 @@ async function getPoolUsers(pool) {
 
 router.get("/", async (req, res) => {
   try {
-    const pools = await Pool.find().sort({ createdAt: -1 });
+    const filters = [
+      { $expr: { $lt: [{ $size: "$participants" }, "$limit"] } },
+    ];
+    const query = String(req.query.q || "").trim();
+    if (query) filters.push({ name: { $regex: escapeRegex(query), $options: "i" } });
+    const pools = await Pool.find({
+      $and: [
+        ...filters,
+      ],
+    }).sort({ createdAt: -1 });
+    pools.sort((left, right) => Number((left.visibility || "public") === "private") - Number((right.visibility || "public") === "private"));
     res.json(pools.map(shapePool));
   } catch (err) {
     console.error(err);
@@ -108,7 +118,7 @@ router.get("/:id/picks/current", requireAuth, async (req, res) => {
     const season = Number(req.query.year) || new Date().getFullYear();
     const week = await getCurrentWeekForSeason(season);
     const games = await getGameModel().find({ season, week }).sort({ startDate: 1 }).lean();
-    const weekGames = filterGamesForPool(games, pool);
+    const weekGames = await selectGamesForPool({ pool, games, season, week });
     const picks = await Pick.find({ poolId: pool._id, userId: req.userId, season, week });
 
     res.json({
@@ -146,10 +156,8 @@ router.put("/:id/picks/current", requireAuth, async (req, res) => {
     const season = Number(req.query.year) || new Date().getFullYear();
     const week = await getCurrentWeekForSeason(season);
     const games = await getGameModel().find({ season, week }).lean();
-    const validGameIds = new Set(filterGamesForPool(
-      games,
-      pool
-    ).map(game => Number(game.id)));
+    const selectedGames = await selectGamesForPool({ pool, games, season, week });
+    const validGameIds = new Set(selectedGames.map(game => Number(game.id)));
     const operations = (Array.isArray(req.body.picks) ? req.body.picks : [])
       .filter(item => validGameIds.has(Number(item.gameId)) && ["home", "away"].includes(item.pick))
       .map(item => ({
@@ -179,7 +187,7 @@ router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
     const season = Number(req.query.year) || new Date().getFullYear();
     const week = await getCurrentWeekForSeason(season);
     const games = await getGameModel().find({ season, week }).sort({ startDate: 1 }).lean();
-    const weekGames = filterGamesForPool(games, pool);
+    const weekGames = await selectGamesForPool({ pool, games, season, week });
     const gameIds = new Set(weekGames.map(game => Number(game.id)));
     const picks = await Pick.find({ poolId: pool._id, season, week });
     const usersById = await getPoolUsers(pool);
@@ -231,29 +239,40 @@ router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
 
 router.post("/", requireAuth, async (req, res) => {
   try {
-    const { name, scoringType, conference, limit } = req.body;
+    const { name, scoringType, conference, limit, visibility, poolPassword, gameSelection } = req.body;
     if (!name || !scoringType) {
       return res.status(400).json({ message: "name and scoringType are required" });
     }
     if (!["straight", "spread"].includes(scoringType)) {
       return res.status(400).json({ message: "Invalid scoringType" });
     }
+    if (!["all", "competitive-ten"].includes(gameSelection || "all")) {
+      return res.status(400).json({ message: "Invalid game selection" });
+    }
     if (await hasReachedPoolLimit(req.userId)) {
       return res.status(400).json({ message: `You can join or create up to ${MAX_POOLS_PER_USER} pools.` });
     }
     const requestedLimit = Number(limit);
     const playerLimit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? requestedLimit : 10;
+    const poolVisibility = visibility === "private" ? "private" : "public";
+    if (poolVisibility === "private" && String(poolPassword || "").length < 4) {
+      return res.status(400).json({ message: "Private pools need a password of at least 4 characters" });
+    }
+    const joinPasswordHash = poolVisibility === "private" ? await bcrypt.hash(String(poolPassword), 10) : undefined;
 
     const pool = await Pool.create({
       name,
       scoringType,
+      gameSelection: gameSelection || "all",
       conference: conference || "All",
       limit: playerLimit,
+      visibility: poolVisibility,
+      joinPasswordHash,
       creatorId: req.userId,
       participants: [req.userId],
     });
 
-    res.status(201).json({ id: pool._id, name: pool.name });
+    res.status(201).json({ id: pool._id, name: pool.name, visibility: poolVisibility });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to create pool" });
@@ -283,10 +302,18 @@ router.delete("/:id", requireAuth, async (req, res) => {
 
 router.post("/:id/join", requireAuth, async (req, res) => {
   try {
-    const pool = await Pool.findById(req.params.id);
+    const pool = await Pool.findById(req.params.id).select("+joinPasswordHash +inviteCode");
     if (!pool) return res.status(404).json({ message: "Pool not found" });
 
     if (isPoolParticipant(pool, req.userId)) return res.json({ message: "Already joined" });
+    if (pool.visibility === "private") {
+      const password = String(req.body?.password || "");
+      const passwordMatches = pool.joinPasswordHash && await bcrypt.compare(password, pool.joinPasswordHash);
+      const legacyCodeMatches = pool.inviteCode && password.trim().toUpperCase() === pool.inviteCode;
+      if (!passwordMatches && !legacyCodeMatches) {
+        return res.status(403).json({ message: "The pool password is incorrect" });
+      }
+    }
     if (await hasReachedPoolLimit(req.userId)) {
       return res.status(400).json({ message: `You can join or create up to ${MAX_POOLS_PER_USER} pools.` });
     }
