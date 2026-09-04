@@ -21,7 +21,7 @@ import LoadingScreen from "./components/LoadingScreen.jsx";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch((error) => {
+    navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch((error) => {
       console.warn("Service worker registration failed:", error);
     });
   });
