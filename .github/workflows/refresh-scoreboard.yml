@@ -1,0 +1,59 @@
+name: Refresh Scoreboard
+
+on:
+  schedule:
+    # Twice daily, away from the busy top of the hour (UTC).
+    - cron: '23 6,18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-scoreboard
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      CFB_API_KEY: ${{ secrets.CFB_API_KEY }}
+      CFB_GAMES_REFRESH_HOURS: '6'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Check required configuration
+        run: |
+          node --input-type=module -e '
+            const missing = ["MONGODB_URI", "CFB_API_KEY"].filter(key => !process.env[key]);
+            if (missing.length) {
+              console.error("Add these repository Actions secrets: " + missing.join(", "));
+              process.exit(1);
+            }
+          '
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Refresh games and scores
+        # No week restriction: completed games in earlier weeks receive corrections too.
+        # In January/February, also refresh the prior season's bowl/playoff results.
+        run: |
+          npm run scrape:cfb
+          month=$(date -u +%m)
+          if [ "$month" = "01" ] || [ "$month" = "02" ]; then
+            CFB_YEAR=$(($(date -u +%Y) - 1)) npm run scrape:cfb
+          fi
