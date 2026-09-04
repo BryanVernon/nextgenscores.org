@@ -11,6 +11,9 @@ const poolSchema = new mongoose.Schema({
   joinPasswordHash: { type: String, select: false },
   inviteCode: { type: String, select: false },
   participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
+  startSeason: Number,
+  startWeek: Number,
+  memberStarts: { type: Map, of: new mongoose.Schema({ season: Number, week: Number }, { _id: false }), default: {} },
   createdAt: { type: Date, default: Date.now },
 });
 

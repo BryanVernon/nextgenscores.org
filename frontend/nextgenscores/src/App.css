@@ -160,7 +160,7 @@
 .weekly-leaderboard .eyebrow { margin-bottom: 6px; }
 .leaderboard-note { margin: 7px 0 14px; color: var(--muted); font-size: .82rem; }
 .weekly-leaderboard ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.weekly-leaderboard li { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--muted); font-size: .88rem; }
+.weekly-leaderboard > ol > li:not(.participant-entry) { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: var(--muted); font-size: .88rem; }
 .weekly-leaderboard li strong { color: var(--ink); }
 .leaderboard-rank { color: var(--accent); font-size: .8rem; font-weight: 800; }
 
@@ -200,5 +200,5 @@
   .settings-section-heading { gap: 10px; }
   .settings-icon { flex-basis: 34px; width: 34px; height: 34px; }
   .selected-teams { margin: 16px 0; }
-  .weekly-leaderboard li { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; padding: 10px; }
+  .weekly-leaderboard > ol > li:not(.participant-entry) { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; padding: 10px; }
 }

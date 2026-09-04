@@ -4,7 +4,11 @@ import bcrypt from "bcrypt";
 import Pool from "../models/pool.js";
 import Pick from "../models/pick.js";
 import requireAuth from "../middleware/requireAuth.js";
-import { selectGamesForPool } from "../utils/poolGameSelection.js";
+import { selectGamesForPool, filterGamesForPool } from "../utils/poolGameSelection.js";
+import { getPickResults } from "../utils/leaderboardResults.js";
+
+import { selectFeaturedMatchups } from "../utils/featuredMatchups.js";
+import { isGameLocked, laterPeriod, memberStart, isEligible, validatePickChanges, firstUnstartedPeriod } from "../utils/poolTiming.js";
 
 const router = express.Router();
 const MAX_POOLS_PER_USER = 10;
@@ -52,6 +56,31 @@ function isPoolParticipant(pool, userId) {
   return pool.participants.some(participant => participant.toString() === userId);
 }
 
+async function currentPeriod(pool, requestedSeason, userId) {
+  const season = Number(requestedSeason) || new Date().getFullYear();
+  const week = await getCurrentWeekForSeason(season);
+  let period = laterPeriod({ season, week }, { season: pool.startSeason, week: pool.startWeek });
+  if (userId) period = laterPeriod(period, memberStart(pool, userId));
+  return period;
+}
+
+async function openingPeriod(pool, minimum) {
+  const games = await getGameModel().find({ season: { $gte: minimum.season, $lte: minimum.season + 1 } }).sort({ season: 1, week: 1, startDate: 1 }).lean();
+  const periods = new Map();
+  for (const game of games) {
+    if (game.season === minimum.season && game.week < (minimum.week ?? 0)) continue;
+    const key = game.season + ":" + game.week;
+    if (!periods.has(key)) periods.set(key, []);
+    periods.get(key).push(game);
+  }
+  return firstUnstartedPeriod(periods.values(), async (candidates, { season, week }) => {
+    const eligible = filterGamesForPool(candidates, pool);
+    return pool.isNew
+      ? (pool.gameSelection === "competitive-ten" ? selectFeaturedMatchups(eligible) : eligible)
+      : await selectGamesForPool({ pool, games: candidates, season, week });
+  });
+}
+
 function shapePool(pool) {
   return {
     id: pool._id,
@@ -62,6 +91,8 @@ function shapePool(pool) {
     participants: pool.participants.length,
     limit: pool.limit ?? 10,
     visibility: pool.visibility || "public",
+    startSeason: pool.startSeason,
+    startWeek: pool.startWeek,
   };
 }
 
@@ -115,8 +146,8 @@ router.get("/:id/picks/current", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Join this pool to view its picks" });
     }
 
-    const season = Number(req.query.year) || new Date().getFullYear();
-    const week = await getCurrentWeekForSeason(season);
+    const { season, week } = await currentPeriod(pool, req.query.year, req.userId);
+    if (week == null) return res.status(409).json({ message: "No scheduled week is available yet." });
     const games = await getGameModel().find({ season, week }).sort({ startDate: 1 }).lean();
     const weekGames = await selectGamesForPool({ pool, games, season, week });
     const picks = await Pick.find({ poolId: pool._id, userId: req.userId, season, week });
@@ -125,6 +156,7 @@ router.get("/:id/picks/current", requireAuth, async (req, res) => {
       pool: shapePool(pool),
       season,
       week,
+      startsLater: season > new Date().getFullYear() || week > (await getCurrentWeekForSeason(season)),
       games: weekGames.map(game => ({
         id: game.id,
         homeTeam: game.homeTeam,
@@ -136,6 +168,7 @@ router.get("/:id/picks/current", requireAuth, async (req, res) => {
         awayApRank: game.awayApRank,
         spread: game.spread,
         overUnder: game.overUnder,
+        locked: isGameLocked(game),
       })),
       picks: Object.fromEntries(picks.map(pick => [pick.gameId, pick.pick])),
     });
@@ -153,13 +186,20 @@ router.put("/:id/picks/current", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Join this pool to save picks" });
     }
 
-    const season = Number(req.query.year) || new Date().getFullYear();
-    const week = await getCurrentWeekForSeason(season);
+    const { season, week } = await currentPeriod(pool, req.query.year, req.userId);
+    if (Number(req.body.season) !== season || Number(req.body.week) !== week) {
+      return res.status(409).json({ message: "The active week has changed. Refresh before saving your picks." });
+    }
     const games = await getGameModel().find({ season, week }).lean();
     const selectedGames = await selectGamesForPool({ pool, games, season, week });
-    const validGameIds = new Set(selectedGames.map(game => Number(game.id)));
-    const operations = (Array.isArray(req.body.picks) ? req.body.picks : [])
-      .filter(item => validGameIds.has(Number(item.gameId)) && ["home", "away"].includes(item.pick))
+    const existing = await Pick.find({ poolId: pool._id, userId: req.userId, season, week });
+    let changes;
+    try {
+      changes = validatePickChanges(selectedGames, Array.isArray(req.body.picks) ? req.body.picks : [], new Map(existing.map(pick => [Number(pick.gameId), pick.pick])));
+    } catch (error) {
+      return res.status(409).json({ message: error.message });
+    }
+    const operations = changes
       .map(item => ({
         updateOne: {
           filter: { poolId: pool._id, userId: req.userId, gameId: Number(item.gameId), week, season },
@@ -184,8 +224,8 @@ router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Join this pool to view its leaderboard" });
     }
 
-    const season = Number(req.query.year) || new Date().getFullYear();
-    const week = await getCurrentWeekForSeason(season);
+    const { season, week } = await currentPeriod(pool, req.query.year);
+    if (week == null) return res.status(409).json({ message: "No scheduled week is available yet." });
     const games = await getGameModel().find({ season, week }).sort({ startDate: 1 }).lean();
     const weekGames = await selectGamesForPool({ pool, games, season, week });
     const gameIds = new Set(weekGames.map(game => Number(game.id)));
@@ -199,21 +239,18 @@ router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
     });
 
     const completedGames = weekGames.filter(game => game.homePoints != null && game.awayPoints != null);
-    const leaderboard = pool.participants.map(participantId => {
+    const leaderboard = pool.participants.filter(id => isEligible(pool, id, season, week)).map(participantId => {
       const participant = usersById.get(participantId.toString());
       const userPicks = picksByUser.get(participantId.toString()) || new Map();
-      const correct = completedGames.reduce((total, game) => {
-        const pick = userPicks.get(Number(game.id));
-        const homeWon = Number(game.homePoints) > Number(game.awayPoints);
-        const awayWon = Number(game.awayPoints) > Number(game.homePoints);
-        return total + ((pick === "home" && homeWon) || (pick === "away" && awayWon) ? 1 : 0);
-      }, 0);
+      const results = getPickResults(weekGames, userPicks);
+      const correct = results.filter(game => game.result === "correct").length;
 
       return {
         userId: participantId,
         name: participant?.name || "Player",
         correct,
         picks: [...userPicks.keys()].filter(gameId => gameIds.has(gameId)).length,
+        results,
       };
     }).sort((a, b) => b.correct - a.correct || b.picks - a.picks || a.name.localeCompare(b.name));
 
@@ -260,7 +297,7 @@ router.post("/", requireAuth, async (req, res) => {
     }
     const joinPasswordHash = poolVisibility === "private" ? await bcrypt.hash(String(poolPassword), 10) : undefined;
 
-    const pool = await Pool.create({
+    const pool = new Pool({
       name,
       scoringType,
       gameSelection: gameSelection || "all",
@@ -272,7 +309,15 @@ router.post("/", requireAuth, async (req, res) => {
       participants: [req.userId],
     });
 
-    res.status(201).json({ id: pool._id, name: pool.name, visibility: poolVisibility });
+    const minimum = { season: new Date().getFullYear(), week: await getCurrentWeekForSeason(new Date().getFullYear()) };
+    const opening = await openingPeriod(pool, minimum);
+    if (!opening) return res.status(409).json({ message: "No unstarted lineup is scheduled yet. Please try again when the next week's schedule is available." });
+    pool.startSeason = opening.season;
+    pool.startWeek = opening.week;
+    await pool.save();
+    const openingGames = await getGameModel().find({ season: opening.season, week: opening.week }).sort({ startDate: 1 }).lean();
+    await selectGamesForPool({ pool, games: openingGames, ...opening });
+    res.status(201).json(shapePool(pool));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to create pool" });
@@ -322,6 +367,9 @@ router.post("/:id/join", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "Pool is full" });
     }
 
+    const opening = await openingPeriod(pool, await currentPeriod(pool));
+    if (!opening) return res.status(409).json({ message: "No unstarted lineup is scheduled yet. Please join when the next week's schedule is available." });
+    pool.memberStarts.set(String(req.userId), opening);
     pool.participants.push(req.userId);
     await pool.save();
     res.json({ message: "Joined pool" });

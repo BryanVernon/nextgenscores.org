@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import "./Leaderboard.css";
 import authFetch from "../authFetch";
+import { lineupLabel } from "../gameLineup";
+import LeaderboardEntry from "../components/LeaderboardEntry";
 
 const API_BASE = import.meta.env.MODE === "development" ? `${window.location.protocol}//${window.location.hostname}:3002` : "https://nextgenscores-org.onrender.com";
 
@@ -60,7 +62,7 @@ function LeaderboardTable({ standings }) {
   const leaderboard = standings.leaderboard;
 
   return <section className="leaderboard-board">
-    <div className="leaderboard-board-header"><div><p className="eyebrow">{pool.conference || "All conferences"} · {standings.season} season</p><h2>{pool.name || "Pool leaderboard"}</h2></div><span>{standings.completedGames} / {standings.totalGames} final</span></div>
-    {leaderboard.length === 0 ? <p className="leaderboard-status">No participants yet.</p> : <ol className="leaderboard-rows">{leaderboard.map(entry => <li key={entry.userId} className={entry.rank === 1 ? "leaderboard-row leader-row" : "leaderboard-row"}><span className="leaderboard-rank">#{entry.rank}</span><strong>{entry.name}</strong><span>{entry.correct} correct</span><small>{entry.picks} picks</small></li>)}</ol>}
+    <div className="leaderboard-board-header"><div><p className="eyebrow">{lineupLabel(pool)} · {standings.season} season</p><h2>{pool.name || "Pool leaderboard"}</h2></div><span>{standings.completedGames} / {standings.totalGames} final</span></div>
+    {leaderboard.length === 0 ? <p className="leaderboard-status">No participants yet.</p> : <ol className="participant-list">{leaderboard.map(entry => <LeaderboardEntry key={entry.userId} entry={entry} week={standings.week} />)}</ol>}
   </section>;
 }

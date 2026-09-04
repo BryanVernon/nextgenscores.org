@@ -26,6 +26,8 @@
 .my-pool-card strong { font-size: .92rem; }
 .my-pool-card small { color: var(--muted); font-size: .76rem; }
 .my-pool-card > span:last-child { color: var(--accent); font-size: 1.2rem; }
+.available-pools-section { margin-top: 34px; }
+.available-pools-status { margin: 8px 0 0; color: var(--muted); line-height: 1.6; }
 .btn { padding: 12px 16px; border: 0; border-radius: 7px; background: var(--ink); color: var(--ink-contrast); font: inherit; font-size: 0.87rem; font-weight: 800; cursor: pointer; transition: background 180ms ease, transform 180ms ease; }
 .btn:hover { background: var(--accent); color: var(--accent-contrast); transform: translateY(-1px); }
 .back-btn { margin-bottom: 20px; background: transparent; color: var(--muted); border: 1px solid var(--line); }
@@ -59,6 +61,7 @@
 .create-pool-form select:focus, .create-pool-form input:focus { outline: 3px solid var(--focus-ring); border-color: var(--accent); }
 .create-btn { grid-column: 1 / -1; justify-self: start; }
 .pick-help { color: var(--muted); margin: -8px 0 18px; }
+.spread-guide { margin: 0 0 24px; padding: 14px 16px; border-left: 3px solid var(--accent); border-radius: 6px; background: var(--accent-soft); color: var(--ink); font-size: .84rem; line-height: 1.65; }
 .weekly-games { display: grid; gap: 10px; margin-bottom: 22px; }
 .pick-game { padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
 .pick-game time { display: block; margin-bottom: 10px; color: var(--muted); font-size: 0.78rem; }
@@ -82,6 +85,8 @@
 .picks-review-heading h3 { margin: 0; color: var(--ink); font-size: 1rem; }
 .picks-review-heading .picks-btn { margin: 0; }
 .team-pick:disabled { cursor: default; opacity: 1; }
+.pick-lock-note { margin: 0 0 10px; color: var(--muted); font-size: .75rem; font-weight: 700; }
+.team-pick:disabled:not(.selected):hover { border-color: var(--line); background: white; color: var(--ink); }
 
 @media (max-width: 650px) {
   .pickem-page { padding: 30px 0 48px; }
@@ -105,7 +110,7 @@
 @media (max-width: 480px) {
   .pickem-page { padding: 26px 0 40px; }
   .pickem-page h1 { font-size: clamp(2.15rem, 12vw, 3rem); }
-  .home-buttons { display: grid; grid-template-columns: 1fr 1fr; }
+  .home-buttons { display: flex; }
   .home-buttons .btn { width: 100%; }
   .pickem-content { margin-top: 14px; padding: 16px 12px; border-radius: 10px; }
   .pick-options { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }

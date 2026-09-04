@@ -5,6 +5,7 @@ import Pick from "../models/pick.js";
 import User from "../models/User.js";
 import PoolNotification from "../models/poolNotification.js";
 import { sendLeaderboardEmail, sendPickReminderEmail } from "../utils/mailer.js";
+import { isEligible } from "../utils/poolTiming.js";
 import { selectGamesForPool } from "../utils/poolGameSelection.js";
 
 dotenv.config();
@@ -74,6 +75,8 @@ async function run() {
   let sent = 0;
 
   for (const pool of pools) {
+    pool.participants = pool.participants.filter(id => isEligible(pool, id, season, week));
+    if (!pool.participants.length) continue;
     const weekGames = await selectGamesForPool({ pool, games, season, week });
     if (!weekGames.length) continue;
     const users = await User.find({ _id: { $in: pool.participants } }).select("name email");
