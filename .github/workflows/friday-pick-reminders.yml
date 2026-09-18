@@ -11,6 +11,10 @@ on:
         description: 'Preview eligibility without sending emails'
         type: boolean
         default: true
+      preview_email:
+        description: 'Optional: send a sample reminder to this address instead of running the job'
+        type: string
+        required: false
 
 permissions: {}
 
@@ -26,11 +30,19 @@ jobs:
       REMINDER_JOB_URL: https://nextgenscores-org.onrender.com/api/jobs/friday-pick-reminders
       REMINDER_JOB_TOKEN: ${{ secrets.REMINDER_JOB_TOKEN }}
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+      PREVIEW_EMAIL: ${{ github.event_name == 'workflow_dispatch' && inputs.preview_email || '' }}
     steps:
       - name: Trigger the protected Render reminder job
         run: |
+          if [ -n "$PREVIEW_EMAIL" ]; then
+            URL="$REMINDER_JOB_URL/preview"
+            DATA="{\"email\":\"$PREVIEW_EMAIL\"}"
+          else
+            URL="$REMINDER_JOB_URL"
+            DATA="{\"dryRun\":$DRY_RUN}"
+          fi
           curl --fail-with-body --show-error --retry 2 --retry-all-errors --max-time 600 \
-            --request POST "$REMINDER_JOB_URL" \
+            --request POST "$URL" \
             --header "Authorization: Bearer $REMINDER_JOB_TOKEN" \
             --header "Content-Type: application/json" \
-            --data "{\"dryRun\": $DRY_RUN}"
+            --data "$DATA"

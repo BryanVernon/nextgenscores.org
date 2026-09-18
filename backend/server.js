@@ -11,6 +11,8 @@ import poolRoutes from "./routes/pools.js";
 import adminRoutes from "./routes/admin.js";
 import requireMaintenance from "./middleware/requireMaintenance.js";
 import requireJobToken from "./middleware/requireJobToken.js";
+import { sendPickReminderEmail } from "./utils/mailer.js";
+import { buildReminderPreview } from "./utils/reminderPreview.js";
 import { requestedScheduleWeek, readProviderArray, storeImportedGames } from "./utils/scheduleData.js";
 
 dotenv.config();
@@ -551,6 +553,21 @@ app.post("/api/jobs/friday-pick-reminders", requireJobToken, async (req, res) =>
   } catch (error) {
     console.error("Remote Friday reminder job failed:", error.message);
     res.status(500).json({ message: "Friday reminder job failed" });
+  }
+});
+
+app.post("/api/jobs/friday-pick-reminders/preview", requireJobToken, async (req, res) => {
+  try {
+    const preview = buildReminderPreview(req.body?.email);
+    await sendPickReminderEmail({
+      ...preview,
+      firstGameAt: Date.now() + 24 * 60 * 60 * 1000,
+      timeZone: "America/Chicago",
+    });
+    res.status(202).json({ message: "Reminder preview sent" });
+  } catch (error) {
+    console.error("Reminder preview failed:", error.message);
+    res.status(400).json({ message: "Unable to send reminder preview" });
   }
 });
 
