@@ -1,5 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import cors from "cors";import subscriberRoutes from "./routes/subscriberRoutes.js";
@@ -8,6 +10,7 @@ import cookieParser from "cookie-parser";
 import poolRoutes from "./routes/pools.js";
 import adminRoutes from "./routes/admin.js";
 import requireMaintenance from "./middleware/requireMaintenance.js";
+import requireJobToken from "./middleware/requireJobToken.js";
 import { requestedScheduleWeek, readProviderArray, storeImportedGames } from "./utils/scheduleData.js";
 
 dotenv.config();
@@ -522,6 +525,34 @@ app.get("/api/teams-by-conference", async (req, res) => {
 });
 app.use("/api/pools", poolRoutes);
 app.use("/api/admin", adminRoutes);
+
+const fridayReminderScript = fileURLToPath(new URL("./scripts/sendFridayReminders.js", import.meta.url));
+
+function runFridayReminderJob(dryRun) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [fridayReminderScript, ...(dryRun ? ["--dry-run"] : [])], {
+      env: process.env,
+      windowsHide: true,
+    });
+    let output = "";
+    child.stdout.on("data", data => { output += data; });
+    child.stderr.on("data", data => { output += data; });
+    child.once("error", reject);
+    child.once("close", code => code === 0 ? resolve(output.trim()) : reject(new Error(`Reminder job exited with code ${code}`)));
+  });
+}
+
+// GitHub Actions can trigger this on schedule without needing direct MongoDB access.
+app.post("/api/jobs/friday-pick-reminders", requireJobToken, async (req, res) => {
+  try {
+    const output = await runFridayReminderJob(req.body?.dryRun === true);
+    console.log("Friday reminder job triggered remotely:", output);
+    res.status(202).json({ message: "Friday reminder job completed", output });
+  } catch (error) {
+    console.error("Remote Friday reminder job failed:", error.message);
+    res.status(500).json({ message: "Friday reminder job failed" });
+  }
+});
 
 // Routes
 app.use("/api/auth", authRoutes);

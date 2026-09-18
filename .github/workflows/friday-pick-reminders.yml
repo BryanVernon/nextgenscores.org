@@ -3,7 +3,7 @@ name: Friday Pick Reminders
 on:
   schedule:
     # Hourly across all local Fridays, including UTC+14 and UTC-12.
-    # The job sends only during the 9 AM hour in the recipient's saved timezone.
+    # The Render backend sends only during the 9 AM hour in each user's timezone.
     - cron: '17 * * * 4-6'
   workflow_dispatch:
     inputs:
@@ -12,8 +12,7 @@ on:
         type: boolean
         default: true
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: friday-pick-reminders
@@ -23,31 +22,15 @@ jobs:
   remind:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: backend
     env:
-      MONGODB_URI: ${{ secrets.MONGODB_URI }}
-      SMTP_USER: ${{ secrets.SMTP_USER }}
-      SMTP_PASS: ${{ secrets.SMTP_PASS }}
-      SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.hostinger.com' }}
-      SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
-      SMTP_SECURE: ${{ vars.SMTP_SECURE || 'false' }}
-      SMTP_FROM: ${{ vars.SMTP_FROM || 'NextGenScores <bryan@nextgenscores.org>' }}
-      FRONTEND_URL: https://nextgenscores.org
+      REMINDER_JOB_URL: https://nextgenscores-org.onrender.com/api/jobs/friday-pick-reminders
+      REMINDER_JOB_TOKEN: ${{ secrets.REMINDER_JOB_TOKEN }}
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci
-      - name: Send reminders for missing, unlocked picks
+      - name: Trigger the protected Render reminder job
         run: |
-          if [ "$DRY_RUN" = "true" ]; then
-            npm run notify:friday -- --dry-run
-          else
-            npm run notify:friday
-          fi
+          curl --fail-with-body --show-error --retry 2 --retry-all-errors --max-time 600 \
+            --request POST "$REMINDER_JOB_URL" \
+            --header "Authorization: Bearer $REMINDER_JOB_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"dryRun\": $DRY_RUN}"

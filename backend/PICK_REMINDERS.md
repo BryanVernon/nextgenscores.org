@@ -1,17 +1,17 @@
 # Friday pick reminders
 
-The `Friday Pick Reminders` GitHub Actions workflow checks hourly Thursday–Saturday UTC, covering Friday in every supported timezone. A user is eligible beginning at 9 AM Friday in their saved timezone (Central by default). Delayed runs catch up before 6 PM local time. GitHub may delay a scheduled run; delivery is not guaranteed at precisely 9:00.
+The `Friday Pick Reminders` GitHub Actions workflow checks hourly Thursday–Saturday UTC, covering Friday in every supported timezone. A user is eligible only during the 9 AM Friday hour in their saved timezone (Central by default). GitHub may delay a scheduled run, so delivery is not guaranteed at precisely 9:00.
 
 Only eligible pool members missing one or more **unlocked** picks receive mail. Thursday games that already started do not prevent a reminder for remaining Friday/Saturday games. Complete entries, weeks before a member joins, and off-season games more than a week away are skipped. The email links directly to `/pickem?pool=...`; login preserves that destination.
 
 ## Activate
 
-1. Deploy frontend and backend changes, and put the workflow on the repository's default branch.
-2. Configure repository Actions secrets `MONGODB_URI`, `SMTP_USER`, and `SMTP_PASS` using the same approved database and mail account as the backend.
-3. Optional Actions variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM`. Defaults match the existing Hostinger mail setup.
-4. Run the workflow manually with **dry_run=true** during a Friday delivery window to check eligibility without sending mail.
+1. Deploy the backend and workflow changes from the repository's default branch.
+2. Add the same random `REMINDER_JOB_TOKEN` secret to both the Render backend service and the GitHub repository's Actions secrets. GitHub uses it only to authorize the protected Render endpoint.
+3. Configure the Render backend service with `MONGODB_URI`, `SMTP_USER`, and `SMTP_PASS`; optional values are `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM`, and `FRONTEND_URL`. The job inherits those values from Render, so they do not need to exist in GitHub.
+4. Run the `Friday Pick Reminders` GitHub workflow manually with **dry_run=true**. GitHub calls Render, and Render connects to MongoDB and reports eligibility without sending mail.
 
-Local preview: `npm run notify:friday -- --dry-run` from `backend`. The script loads `backend/.env` regardless of the working directory. The dry run reports only a count and does not record sends or freeze lineups.
+The GitHub workflow never connects to MongoDB or SMTP. This avoids GitHub-hosted runner network access rules while retaining free GitHub scheduling.
 
 ## Delivery history and retries
 
