@@ -3,9 +3,12 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import Pool from "../models/pool.js";
 import Pick from "../models/pick.js";
+import PoolWeek from "../models/poolWeek.js";
 import requireAuth from "../middleware/requireAuth.js";
 import { selectGamesForPool, filterGamesForPool } from "../utils/poolGameSelection.js";
-import { getPickResults } from "../utils/leaderboardResults.js";
+import { getPickResults, isGameComplete } from "../utils/leaderboardResults.js";
+import { historicalLineup, weeklyStandings, seasonStandings } from "../utils/poolStandings.js";
+import { footballSeason } from "../utils/timeZone.js";
 
 import { selectFeaturedMatchups } from "../utils/featuredMatchups.js";
 import { isGameLocked, laterPeriod, memberStart, isEligible, validatePickChanges, firstUnstartedPeriod } from "../utils/poolTiming.js";
@@ -57,7 +60,7 @@ function isPoolParticipant(pool, userId) {
 }
 
 async function currentPeriod(pool, requestedSeason, userId) {
-  const season = Number(requestedSeason) || new Date().getFullYear();
+  const season = Number(requestedSeason) || footballSeason();
   const week = await getCurrentWeekForSeason(season);
   let period = laterPeriod({ season, week }, { season: pool.startSeason, week: pool.startWeek });
   if (userId) period = laterPeriod(period, memberStart(pool, userId));
@@ -216,6 +219,51 @@ router.put("/:id/picks/current", requireAuth, async (req, res) => {
   }
 });
 
+// Season totals and past weeks use the original saved picks and frozen lineups.
+router.get("/:id/leaderboard", requireAuth, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: "Invalid pool" });
+    const pool = await Pool.findById(req.params.id);
+    if (!pool) return res.status(404).json({ message: "Pool not found" });
+    if (!isPoolParticipant(pool, req.userId)) return res.status(403).json({ message: "Join this pool to view its leaderboard" });
+    const savedSeasons = await Pick.distinct("season", { poolId: pool._id });
+    const lineupSeasons = await PoolWeek.distinct("season", { poolId: pool._id });
+    const activeSeason = Math.max(footballSeason(), pool.startSeason || 0);
+    const seasons = [...new Set([activeSeason, ...savedSeasons, ...lineupSeasons])].sort((a, b) => b - a);
+    const season = req.query.year === undefined ? activeSeason : Number(req.query.year);
+    if (!Number.isInteger(season) || !seasons.includes(season)) return res.status(400).json({ message: "Choose an available season" });
+    const requestedWeek = req.query.week == null || req.query.week === "all" ? null : Number(req.query.week);
+    if (requestedWeek !== null && (!Number.isInteger(requestedWeek) || requestedWeek < 0)) return res.status(400).json({ message: "Choose a valid week" });
+    const [games, picks, snapshots, users] = await Promise.all([
+      getGameModel().find({ season }).sort({ startDate: 1 }).lean(),
+      Pick.find({ poolId: pool._id, season }).lean(),
+      PoolWeek.find({ poolId: pool._id, season }).lean(),
+      mongoose.model("User").find({ _id: { $in: pool.participants } }).select("name").lean(),
+    ]);
+    const currentWeek = getCurrentWeek(games);
+    const lastWeek = Math.max(currentWeek ?? -1, ...snapshots.map(item => item.week), ...picks.map(item => item.week), season === pool.startSeason ? pool.startWeek ?? -1 : -1);
+    const weeks = [...new Set([...games, ...snapshots, ...picks].map(item => item.week))]
+      .filter(week => week <= lastWeek && (pool.startSeason == null || season > pool.startSeason || (season === pool.startSeason && week >= (pool.startWeek ?? 0))))
+      .sort((a, b) => a - b);
+    if (requestedWeek !== null && !weeks.includes(requestedWeek)) return res.status(404).json({ message: "No leaderboard is available for that week" });
+    const selectedWeeks = requestedWeek === null ? weeks : [requestedWeek];
+    const boards = await Promise.all(selectedWeeks.map(async week => {
+      const weekPicks = picks.filter(pick => pick.week === week);
+      const candidates = games.filter(game => game.week === week);
+      const lineup = season === activeSeason && week === currentWeek
+        ? await selectGamesForPool({ pool, games: candidates, season, week })
+        : historicalLineup(pool, candidates, snapshots.find(item => item.week === week), weekPicks);
+      return weeklyStandings({ pool, games: lineup, picks: weekPicks, users, season, week, viewerId: req.userId });
+    }));
+    res.set("Cache-Control", "private, no-store");
+    res.json({ pool: shapePool(pool), season, seasons, weeks, currentWeek: currentWeek ?? null, week: requestedWeek,
+      view: requestedWeek === null ? "season" : "week", ...(requestedWeek === null ? seasonStandings(boards) : boards[0]) });
+  } catch (error) {
+    console.error("Leaderboard history error:", error);
+    res.status(500).json({ message: "Unable to load leaderboard history" });
+  }
+});
+
 router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
   try {
     const pool = await Pool.findById(req.params.id);
@@ -238,11 +286,11 @@ router.get("/:id/leaderboard/current", requireAuth, async (req, res) => {
       picksByUser.get(pick.userId.toString()).set(Number(pick.gameId), pick.pick);
     });
 
-    const completedGames = weekGames.filter(game => game.homePoints != null && game.awayPoints != null);
+    const completedGames = weekGames.filter(isGameComplete);
     const leaderboard = pool.participants.filter(id => isEligible(pool, id, season, week)).map(participantId => {
       const participant = usersById.get(participantId.toString());
       const userPicks = picksByUser.get(participantId.toString()) || new Map();
-      const results = getPickResults(weekGames, userPicks);
+      const results = getPickResults(weekGames, userPicks, pool.scoringType, { hideUnlocked: participantId.toString() !== req.userId });
       const correct = results.filter(game => game.result === "correct").length;
 
       return {

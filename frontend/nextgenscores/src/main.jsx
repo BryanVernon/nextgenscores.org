@@ -1,8 +1,8 @@
-import { StrictMode, useContext } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Link } from "react-router-dom";
 import "./index.css";
-import { AuthProvider, AuthContext } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthProvider";
 import Layout from "./Layout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import PickEmPage from "./pages/PickEmPage.jsx";
@@ -17,7 +17,7 @@ import Leaderboard from "./pages/Leaderboard.jsx";
 import ThemeApplier from "./components/ThemeApplier.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
-import LoadingScreen from "./components/LoadingScreen.jsx";
+import Landing from "./components/Landing.jsx";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -26,14 +26,6 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
-// Landing component must use AuthContext
-function Landing() {
-  const { user, loading } = useContext(AuthContext);
-
-  if (loading) return <LoadingScreen />;
-  return user ? <Navigate to="/dashboard" replace /> : <Signup />;
-}
-
 const router = createBrowserRouter([
   // Auth pages — login/signup
   { path: "/login", element: <Login /> },
@@ -44,20 +36,16 @@ const router = createBrowserRouter([
   // Main app pages
   {
     path: "/",
-    element: (
-      <ProtectedRoute>
-        <Layout />
-      </ProtectedRoute>
-    ),
+    element: <Layout />,
     children: [
       { index: true, element: <Landing /> },
-      { path: "dashboard", element: <Dashboard /> },
-      { path: "pickem", element: <PickEmPage /> },
+      { path: "dashboard", element: <ProtectedRoute><Dashboard /></ProtectedRoute> },
+      { path: "pickem", element: <ProtectedRoute><PickEmPage /></ProtectedRoute> },
       { path: "schedule", element: <Scoreboard /> },
-      { path: "*", element: <div>404 Not Found</div> },
-      { path: "settings", element: <Settings /> },
-      { path: "leaderboard", element: <Leaderboard /> },
-      { path: "admin", element: <AdminRoute><AdminDashboard /></AdminRoute> },
+      { path: "*", element: <div className="page-message"><h1>Page not found</h1><p>Let's get you back to the games.</p><Link to="/schedule">Browse scores</Link></div> },
+      { path: "settings", element: <ProtectedRoute><Settings /></ProtectedRoute> },
+      { path: "leaderboard", element: <ProtectedRoute><Leaderboard /></ProtectedRoute> },
+      { path: "admin", element: <ProtectedRoute><AdminRoute><AdminDashboard /></AdminRoute></ProtectedRoute> },
     ],
   }
 

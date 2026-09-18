@@ -7,6 +7,8 @@ import authRoutes from "./routes/auth.js";
 import cookieParser from "cookie-parser";
 import poolRoutes from "./routes/pools.js";
 import adminRoutes from "./routes/admin.js";
+import requireMaintenance from "./middleware/requireMaintenance.js";
+import { requestedScheduleWeek, readProviderArray, storeImportedGames } from "./utils/scheduleData.js";
 
 dotenv.config();
 
@@ -45,6 +47,10 @@ const gameSchema = new mongoose.Schema({
   awayTeam: String,
   homePoints: Number,
   awayPoints: Number,
+  completed: Boolean,
+  startTimeTBD: Boolean,
+  seasonType: String,
+  updatedAt: Date,
   startDate: String,
   venue: String,
   awayConference: String,
@@ -108,7 +114,7 @@ function matchupKey(homeTeam, awayTeam) {
 }
 
 function selectTheOddsApiLine(event) {
-  const hasUsableLine = bookmaker => bookmaker.markets?.some(market =>
+  const hasUsableLine = bookmaker => bookmaker?.markets?.some(market =>
     market.key === "spreads" || market.key === "totals"
   );
   const preferredBooks = ["fanduel", "draftkings", "betmgm", "caesars"];
@@ -252,14 +258,10 @@ app.get("/", (req, res) => res.send("NextGenScores API is live!"));
 
 // --- Route: Fetch all 2025 games, logos, and betting lines ---
 // --- Route: Fetch games for a given season (defaults to current year) ---
-app.get("/api/fetch-games", async (req, res) => {
+app.post("/api/fetch-games", requireMaintenance, async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const apRankings = await fetchApRankings(year);
-
-    // Only clear games for that season, not the whole collection
-    await Game.deleteMany({ season: year });
-    console.log(`🗑️ Cleared existing ${year} games from MongoDB`);
 
     const headers = process.env.CFB_API_KEY
       ? { Authorization: `Bearer ${process.env.CFB_API_KEY}` }
@@ -269,11 +271,11 @@ app.get("/api/fetch-games", async (req, res) => {
       `https://api.collegefootballdata.com/games?year=${year}`,
       { headers }
     );
-    const gamesData = await gamesRes.json();
+    const gamesData = await readProviderArray(gamesRes, "CFBD games");
     const outletByGameId = await fetchGameOutlets(year);
 
     const teamsRes = await fetch("https://api.collegefootballdata.com/teams", { headers });
-    const teamsData = await teamsRes.json();
+    const teamsData = await readProviderArray(teamsRes, "CFBD teams");
 
     const teamLogoMap = {};
     teamsData.forEach(team => {
@@ -283,7 +285,7 @@ app.get("/api/fetch-games", async (req, res) => {
     });
 
     const linesRes = await fetch(`https://api.collegefootballdata.com/lines?year=${year}`, { headers });
-    const linesData = await linesRes.json();
+    const linesData = await readProviderArray(linesRes, "CFBD lines");
     const linesMap = {};
     linesData.forEach(line => {
       linesMap[line.id] = line.lines && line.lines.length > 0 ? line.lines[0] : {};
@@ -314,6 +316,10 @@ app.get("/api/fetch-games", async (req, res) => {
         awayTeam: g.awayTeam,
         homePoints: g.homePoints ?? null,
         awayPoints: g.awayPoints ?? null,
+        completed: g.completed,
+        startTimeTBD: g.startTimeTBD,
+        seasonType: g.seasonType,
+        updatedAt: new Date(),
         startDate: g.startDate,
         venue: g.venue,
         homeConference: g.homeConference,
@@ -331,12 +337,10 @@ app.get("/api/fetch-games", async (req, res) => {
       };
     });
 
-    const result = await Game.insertMany(enrichedGames, { ordered: false }).catch(err => {
-      if (err.code !== 11000) console.error(err);
-    });
+    await storeImportedGames(Game, enrichedGames, year);
 
     res.json({
-      message: `Inserted ${result?.length || 0} games for ${year} with logos and betting data.`,
+      message: `Updated ${enrichedGames.length} games for ${year} with logos and betting data.`,
       theOddsApiFallback: Boolean(process.env.THE_ODDS_API_KEY),
     });
   } catch (err) {
@@ -346,7 +350,7 @@ app.get("/api/fetch-games", async (req, res) => {
 });
 
 // Backfill TV outlets without replacing the existing schedule data.
-app.get("/api/sync-game-outlets", async (req, res) => {
+app.post("/api/sync-game-outlets", requireMaintenance, async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const outletByGameId = await fetchGameOutlets(year);
@@ -418,7 +422,12 @@ app.get("/api/schedule", async (req, res) => {
     ]);
 
     const currentWeek = currentWeekFromMetadata(weeks);
-    const requestedWeek = req.query.week === "all" ? null : Number(req.query.week) || currentWeek;
+    let requestedWeek;
+    try {
+      requestedWeek = requestedScheduleWeek(req.query.week, currentWeek);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
     const filter = { season };
     if (requestedWeek != null) filter.week = requestedWeek;
 
@@ -434,7 +443,7 @@ app.get("/api/schedule", async (req, res) => {
 
     const games = await Game.find(filter).sort({ startDate: 1 }).lean();
     res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
-    res.json({ games, weeks, teams, currentWeek });
+    res.json({ season, games, weeks, teams, currentWeek });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch schedule from MongoDB" });

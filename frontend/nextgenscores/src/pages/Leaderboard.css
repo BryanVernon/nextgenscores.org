@@ -1,4 +1,9 @@
 .leaderboard-page { width: min(900px, 100%); margin: 0 auto; padding: 52px 0 72px; }
+.leaderboard-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 22px 0 16px; }
+.leaderboard-controls label { display: grid; gap: 6px; color: var(--muted); font-size: .8rem; font-weight: 700; }
+.leaderboard-controls select { min-height: 44px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); font: inherit; }
+.season-week-results { margin: 0; padding: 0; list-style: none; }
+.season-week-results li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .85rem; }
 .leaderboard-page h1 { margin: 0; color: var(--ink); font-family: 'Space Grotesk', sans-serif; font-size: clamp(2.4rem, 5vw, 4rem); letter-spacing: -0.06em; line-height: .98; }
 .leaderboard-page h1 span { color: var(--accent); }
 .leaderboard-intro { max-width: 540px; margin: 16px 0 30px; color: var(--muted); line-height: 1.6; }

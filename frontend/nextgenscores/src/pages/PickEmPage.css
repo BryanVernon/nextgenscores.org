@@ -61,6 +61,8 @@
 .create-pool-form select:focus, .create-pool-form input:focus { outline: 3px solid var(--focus-ring); border-color: var(--accent); }
 .create-btn { grid-column: 1 / -1; justify-self: start; }
 .pick-help { color: var(--muted); margin: -8px 0 18px; }
+.pick-progress { color: var(--muted); margin: -8px 0 18px; font-size: .84rem; font-weight: 700; }
+.pickem-page .btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 .spread-guide { margin: 0 0 24px; padding: 14px 16px; border-left: 3px solid var(--accent); border-radius: 6px; background: var(--accent-soft); color: var(--ink); font-size: .84rem; line-height: 1.65; }
 .weekly-games { display: grid; gap: 10px; margin-bottom: 22px; }
 .pick-game { padding: 14px; border: 1px solid var(--line); border-radius: 8px; }

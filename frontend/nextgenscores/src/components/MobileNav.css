@@ -31,5 +31,6 @@
   }
 
   .mobile-nav-link.active { color: #7ce0b4; }
+  .mobile-nav-guest { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .mobile-nav-icon { font-size: 1.22rem; line-height: 1; }
 }

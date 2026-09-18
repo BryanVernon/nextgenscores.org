@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { reminderEmail } from "./reminderEmail.js";
 
 function createTransporter() {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -34,16 +35,12 @@ function appUrl() {
   return (process.env.FRONTEND_URL || "https://nextgenscores.org").replace(/\/$/, "");
 }
 
-export async function sendPickReminderEmail({ to, name, poolName, week, firstGameAt }) {
+export async function sendPickReminderEmail({ to, ...details }) {
   const transporter = createTransporter();
   const from = process.env.SMTP_FROM || "NextGenScores <bryan@nextgenscores.org>";
-  const kickoff = new Date(firstGameAt).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
-  const picksUrl = `${appUrl()}/pickem`;
   return transporter.sendMail({
     from, to,
-    subject: `Reminder: make your Week ${week} picks for ${poolName}`,
-    text: `Hi ${name},\n\nThe first game in ${poolName} starts ${kickoff}. Make your Week ${week} picks before kickoff: ${picksUrl}`,
-    html: `<p>Hi ${name},</p><p>The first game in <strong>${poolName}</strong> starts ${kickoff}. Make your Week ${week} picks before kickoff.</p><p><a href="${picksUrl}">Make my picks</a></p>`,
+    ...reminderEmail({ ...details, baseUrl: appUrl() }),
   });
 }
 

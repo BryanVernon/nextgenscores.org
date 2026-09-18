@@ -9,7 +9,9 @@ const apiKey = process.env.CFB_API_KEY;
 const args = new Set(process.argv.slice(2));
 const year = Number(process.env.CFB_YEAR || new Date().getFullYear());
 const weekArg = [...args].find((arg) => arg.startsWith("--week="));
-const week = Number(weekArg?.split("=")[1] || process.env.CFB_WEEK) || null;
+const requestedWeek = weekArg?.split("=")[1] ?? process.env.CFB_WEEK;
+const week = requestedWeek == null || requestedWeek === "" ? null : Number(requestedWeek);
+if (week != null && (!Number.isInteger(week) || week < 0)) throw new Error("CFB_WEEK must be a nonnegative integer");
 const force = args.has("--force");
 
 if (!mongoUri) throw new Error("MONGODB_URI is required");
@@ -230,6 +232,9 @@ async function run() {
             awayTeam,
             homePoints: value(game, "homePoints", "home_points"),
             awayPoints: value(game, "awayPoints", "away_points"),
+            completed: value(game, "completed"),
+            startTimeTBD: value(game, "startTimeTBD", "start_time_tbd"),
+            seasonType: value(game, "seasonType", "season_type"),
             startDate: value(game, "startDate", "start_date"),
             venue: value(game, "venue"),
             homeConference: value(game, "homeConference", "home_conference"),

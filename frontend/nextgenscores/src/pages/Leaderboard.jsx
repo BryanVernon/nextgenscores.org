@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import "./Leaderboard.css";
 import authFetch from "../authFetch";
 import { lineupLabel } from "../gameLineup";
@@ -6,63 +7,94 @@ import LeaderboardEntry from "../components/LeaderboardEntry";
 
 const API_BASE = import.meta.env.MODE === "development" ? `${window.location.protocol}//${window.location.hostname}:3002` : "https://nextgenscores-org.onrender.com";
 
-async function readLeaderboard(pool, signal) {
-  const response = await authFetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { signal });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.message || "Unable to load leaderboard");
-  if (!Array.isArray(body?.leaderboard)) throw new Error("The leaderboard response is incomplete.");
-  return { ...body, pool: body.pool || pool };
-}
-
 export default function Leaderboard() {
-  const [boards, setBoards] = useState([]);
+  const [pools, setPools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-
-    async function loadBoards() {
+    async function load() {
       try {
         const response = await authFetch(`${API_BASE}/api/pools/mine`, { signal: controller.signal });
-        if (!response.ok) throw new Error("Unable to load your pools");
-        const pools = await response.json();
-        const results = await Promise.all(pools.map(async pool => {
-          try {
-            return { pool, standings: await readLeaderboard(pool, controller.signal) };
-          } catch (loadError) {
-            if (loadError.name === "AbortError") throw loadError;
-            return { pool, error: loadError.message };
-          }
-        }));
-        setBoards(results);
-      } catch (loadError) {
-        if (loadError.name !== "AbortError") setError(loadError.message);
+        if (!response.ok) throw new Error("Unable to load your pools. Please try again.");
+        const body = await response.json();
+        if (!Array.isArray(body)) throw new Error("Unable to load your pools.");
+        if (!controller.signal.aborted) setPools(body);
+      } catch (error) {
+        if (!controller.signal.aborted) setError(error.message);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
     }
-
-    loadBoards();
+    load();
     return () => controller.abort();
-  }, []);
+  }, [attempt]);
 
   return <div className="leaderboard-page">
-    <p className="eyebrow">See who is making the right calls</p><h1>Pool <span>Leaderboard</span></h1>
-    <p className="leaderboard-intro">Track the weekly race across every Pick 'Em pool you have joined.</p>
-    {loading && <p className="leaderboard-status">Loading your pools...</p>}
-    {!loading && boards.length === 0 && !error && <div className="leaderboard-empty">Join or create a Pick 'Em pool to see standings here.</div>}
-    {!loading && boards.length > 0 && <div className="leaderboard-boards">{boards.map(({ pool, standings, error: boardError }) => boardError ? <section className="leaderboard-board leaderboard-board-error" key={pool.id}><h2>{pool.name}</h2><p>{boardError}</p></section> : <LeaderboardTable key={pool.id} standings={standings} />)}</div>}
-    {error && <div className="leaderboard-error">{error}</div>}
+    <p className="eyebrow">Every week counts</p><h1>Pool <span>Leaderboard</span></h1>
+    <p className="leaderboard-intro">Your points carry forward all season. Review the overall race or revisit any week's picks.</p>
+    {loading && <p className="leaderboard-status" role="status">Loading your pools...</p>}
+    {!loading && !pools.length && !error && <div className="leaderboard-empty"><p>Join or create a Pick 'Em pool to see standings here.</p><Link className="dashboard-link" to="/pickem">Browse pools →</Link></div>}
+    <div className="leaderboard-boards">{pools.map(pool => <PoolLeaderboard key={pool.id} pool={pool} />)}</div>
+    {error && <div className="leaderboard-error" role="alert"><p>{error}</p><button className="schedule-button" onClick={() => { setError(null); setLoading(true); setAttempt(value => value + 1); }}>Try again</button></div>}
   </div>;
 }
 
-function LeaderboardTable({ standings }) {
-  const pool = standings.pool;
-  const leaderboard = standings.leaderboard;
+function PoolLeaderboard({ pool }) {
+  const [standings, setStandings] = useState(null);
+  const [season, setSeason] = useState("");
+  const [week, setWeek] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
-  return <section className="leaderboard-board">
-    <div className="leaderboard-board-header"><div><p className="eyebrow">{lineupLabel(pool)} · {standings.season} season</p><h2>{pool.name || "Pool leaderboard"}</h2></div><span>{standings.completedGames} / {standings.totalGames} final</span></div>
-    {leaderboard.length === 0 ? <p className="leaderboard-status">No participants yet.</p> : <ol className="participant-list">{leaderboard.map(entry => <LeaderboardEntry key={entry.userId} entry={entry} week={standings.week} />)}</ol>}
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      try {
+        const query = new URLSearchParams({ week });
+        if (season) query.set("year", season);
+        const response = await authFetch(`${API_BASE}/api/pools/${pool.id}/leaderboard?${query}`, { signal: controller.signal });
+        const body = await response.json();
+        if (!response.ok || !Array.isArray(body.leaderboard)) throw new Error(body.message || "Unable to load these standings.");
+        if (!controller.signal.aborted) setStandings(body);
+      } catch (error) {
+        if (!controller.signal.aborted) setError(error.message);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    load();
+    return () => controller.abort();
+  }, [pool.id, season, week, attempt]);
+
+  function selectWeek(value) { setLoading(true); setError(null); setWeek(String(value)); }
+
+  return <section className="leaderboard-board" aria-label={`${pool.name} standings`}>
+    <div className="leaderboard-board-header"><div><p className="eyebrow">{lineupLabel(pool)}</p><h2>{pool.name}</h2></div><Link className="dashboard-link" to={`/pickem?pool=${pool.id}`}>Make picks →</Link></div>
+    <div className="leaderboard-controls">
+      <label>Season<select value={season || standings?.season || ""} onChange={event => { setLoading(true); setError(null); setSeason(event.target.value); setWeek("all"); }} disabled={!standings}>
+        {!standings && <option value="">Loading...</option>}
+        {standings?.seasons.map(value => <option key={value} value={value}>{value}</option>)}
+      </select></label>
+      <label>Standings<select value={week} onChange={event => selectWeek(event.target.value)} disabled={!standings}>
+        <option value="all">Season total</option>
+        {standings?.weeks.map(value => <option key={value} value={value}>Week {value}{value === standings.currentWeek ? " (current)" : ""}</option>)}
+      </select></label>
+      <button className="schedule-button" disabled={loading} onClick={() => { setLoading(true); setError(null); setAttempt(value => value + 1); }}>{loading ? "Loading…" : "Refresh"}</button>
+    </div>
+    {error && <p className="leaderboard-board-error" role="alert">{error} Use Refresh to try again.</p>}
+    {loading && <p role="status">Loading standings...</p>}
+    {!loading && !error && standings && <>
+      <p className="leaderboard-note">{standings.view === "season" ? `${standings.season} season total` : `Week ${standings.week}`} · {standings.completedGames} of {standings.totalGames} games final. One point per correct pick; ties and pushes earn no points.</p>
+      {standings.leaderboard.length === 0 ? <p>No results yet for this season.</p> : <ol className="participant-list">{standings.leaderboard.map(entry => standings.view === "season"
+        ? <li className="participant-entry" key={entry.userId}><details className={`participant-details${entry.rank === 1 ? " participant-leader" : ""}`}>
+          <summary className="participant-summary"><span className="participant-rank">#{entry.rank}</span><strong>{entry.name}</strong><span className="participant-score">{entry.correct} points</span><span className="participant-toggle">By week ⌄</span></summary>
+          <div className="participant-breakdown"><h4>{entry.name}'s season</h4><ul className="season-week-results">{entry.weeks.map(item => <li key={item.week}><button className="dashboard-link" onClick={() => selectWeek(item.week)}>Week {item.week}</button><span>{item.correct} correct · {item.picks} picks saved</span></li>)}</ul></div>
+        </details></li>
+        : <LeaderboardEntry key={entry.userId} entry={entry} week={standings.week} scoringType={pool.scoringType} />)}</ol>}
+    </>}
   </section>;
 }

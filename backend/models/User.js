@@ -1,6 +1,7 @@
 // backend/models/User.js
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import { DEFAULT_TIME_ZONE, isValidTimeZone } from "../utils/timeZone.js";
 
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -10,6 +11,7 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ["user", "admin"], default: "user" },
   favoriteTeams: { type: [String], default: [] },
+  timeZone: { type: String, default: DEFAULT_TIME_ZONE, validate: isValidTimeZone },
   theme: {
     mode: { type: String, enum: ["default", "team"], default: "default" },
     team: { type: String, default: null },

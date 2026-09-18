@@ -1,232 +1,203 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import "../App.css";
 import { CONFERENCES, getTeamGroups } from "../teamOptions";
+import { gameStatus, groupGamesByDate, latestUpdate, spreadLabel } from "../scheduleUtils";
+import { defaultScheduleConference } from "../scheduleFilters";
+import useTimeZone from "../useTimeZone";
 
 const API_URL = import.meta.env.MODE === "development"
   ? `${window.location.protocol}//${window.location.hostname}:3002/api/schedule`
   : "https://nextgenscores-org.onrender.com/api/schedule";
 
-export default function App() {
-  const [games, setGames] = useState([])
-  const [week, setWeek] = useState(null)
-  const [weeks, setWeeks] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [currentWeek, setCurrentWeek] = useState(0)
-  const [conference, setConference] = useState('AP Top 25')
-  const [team, setTeam] = useState('')
-  const [teams, setTeams] = useState([])
-  const lastLoadedKey = useRef(null)
-  const conferences = CONFERENCES
+export default function Scoreboard() {
+  const displayTimeZone = useTimeZone();
+  const [params, setParams] = useSearchParams();
+  const requestedWeek = params.get("week");
+  const week = requestedWeek === "all" || /^\d+$/.test(requestedWeek || "") ? requestedWeek : "current";
+  const conference = params.get("conference") || defaultScheduleConference;
+  const team = params.get("team") || "";
+  const [data, setData] = useState({ games: [], weeks: [], teams: [], currentWeek: null });
+  const [loadedKey, setLoadedKey] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refresh, setRefresh] = useState(0);
+  const [checkedAt, setCheckedAt] = useState(null);
+  const requestKey = `${week}|${conference}|${team}`;
 
   useEffect(() => {
-    let ignore = false;
+    const controller = new AbortController();
+    let active = true;
+    let inFlight = false;
+    let timeout;
 
     async function load() {
-      const requestKey = `${week ?? "current"}|${conference}|${team}`;
-      if (lastLoadedKey.current === requestKey) return;
+      if (inFlight) return;
+      inFlight = true;
       setLoading(true);
-      setError(null);
-
+      setError("");
+      timeout = setTimeout(() => controller.abort(), 30000);
       try {
-        const query = new URLSearchParams();
-        if (week != null) query.set("week", week);
-        if (conference) query.set("conference", conference);
+        const query = new URLSearchParams({ conference });
+        if (week !== "current") query.set("week", week);
         if (team) query.set("team", team);
-        const res = await fetch(`${API_URL}?${query}`);
-        if (!res.ok) throw new Error(`API request failed: ${res.status}`);
-        const data = await res.json();
-
-        if (ignore) return;
-
-        setGames(data.games);
-        setWeeks(data.weeks.map(item => item.week));
-        setTeams(data.teams);
-        setCurrentWeek(data.currentWeek);
-        const loadedWeek = week ?? data.currentWeek;
-        lastLoadedKey.current = `${loadedWeek}|${conference}|${team}`;
-        if (week == null) setWeek(data.currentWeek);
-
-      } catch (err) {
-        setError(err.message);
+        const response = await fetch(`${API_URL}?${query}`, { signal: controller.signal, cache: "no-cache" });
+        if (!response.ok) throw new Error("Schedule unavailable");
+        const next = await response.json();
+        if (!Array.isArray(next.games) || !Array.isArray(next.weeks) || !Array.isArray(next.teams)) {
+          throw new Error("Invalid schedule");
+        }
+        if (!active) return;
+        setData(next);
+        setLoadedKey(requestKey);
+        setCheckedAt(new Date());
+      } catch {
+        if (active) setError("We couldn’t update the schedule. Check your connection and try again.");
       } finally {
-        setLoading(false);
+        clearTimeout(timeout);
+        inFlight = false;
+        if (active) setLoading(false);
       }
     }
 
     load();
-    return () => { ignore = true };
-  }, [week, conference, team]);
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [week, conference, team, requestKey, refresh]);
 
-  const teamGroups = useMemo(() => getTeamGroups(teams), [teams]);
-  const sortedGames = games;
+  const teamGroups = useMemo(() => getTeamGroups(data.teams), [data.teams]);
+  const hasMatchingData = loadedKey === requestKey;
+  const games = hasMatchingData ? data.games : [];
+  const groups = groupGamesByDate(games, displayTimeZone);
+  const updatedAt = latestUpdate(games);
+  const weeks = data.weeks.map(item => item.week);
+  const selectedWeek = week === "current" ? data.currentWeek : Number(week);
+  const weekIndex = weeks.indexOf(selectedWeek);
+  const timeZone = new Intl.DateTimeFormat("en-US", { timeZoneName: "long", timeZone: displayTimeZone }).formatToParts(new Date())
+    .find(part => part.type === "timeZoneName")?.value || "your local time";
 
-  function handleWeekChange(e) {
-    setWeek(e.target.value === 'all' ? 'all' : Number(e.target.value))
-  }
-
-  function handleConferenceChange(e) {
-    setConference(e.target.value)
-  }
-
-  function handleTeamChange(e) {
-    setTeam(e.target.value)
-    if (e.target.value) {
-      setConference('All')
-    }
+  function changeFilters(changes) {
+    setParams(previous => {
+      const next = new URLSearchParams(previous);
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value == null || value === "" || (key === "week" && value === "current")) next.delete(key);
+        else next.set(key, String(value));
+      });
+      return next;
+    });
   }
 
   return (
-    <>
-      
-    
-
     <div className="schedule-page">
       <header className="schedule-header">
         <div>
-          <p className="eyebrow">Saturday is on the way</p>
-          <h1>College Football <span>Schedule</span></h1>
-          <p className="schedule-intro">Every matchup, kickoff, and line in one place.</p>
+          <p className="eyebrow">Your college football Saturday starts here</p>
+          <h1>Scores &amp; <span>Schedule</span></h1>
+          <p className="schedule-intro">Find your team. Catch the kickoff. Know where to watch.</p>
         </div>
-        <div className="schedule-count">
-          <strong>{sortedGames.length}</strong>
-          <span>matchups</span>
+        <div className="schedule-count" aria-label={hasMatchingData ? `${games.length} matchups` : "Loading matchups"}>
+          <strong>{hasMatchingData ? games.length : "—"}</strong><span>matchups</span>
         </div>
       </header>
 
-      <div className="filter-container">
+      <section className="filter-container" aria-label="Schedule filters">
         <div className="filter-heading">
           <span className="filter-kicker">Browse the slate</span>
-          <span className="filter-current">{team || (conference === 'All' ? 'All conferences' : conference)}</span>
+          <span className="filter-current">{team || (conference === "All" ? "All conferences" : conference)}</span>
         </div>
         <div className="filter">
           <label htmlFor="week-filter">Week</label>
-          <select id="week-filter" value={week} onChange={handleWeekChange}>
-            <option value="all">All</option>
-            {weeks.map(w => (
-              <option key={w} value={w}>
-                {w === currentWeek ? `Current Week` : w}
-              </option>
-            ))}
+          <select id="week-filter" value={week} onChange={event => changeFilters({ week: event.target.value })}>
+            <option value="current">Current week{data.currentWeek != null ? ` (${data.currentWeek})` : ""}</option>
+            <option value="all">All weeks</option>
+            {weeks.map(value => <option key={value} value={value}>Week {value}</option>)}
           </select>
-
           <label htmlFor="conference-filter">Conference</label>
-          <select id="conference-filter" value={conference} onChange={handleConferenceChange}>
-            <option value="All">All</option>
-            {conferences.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
+          <select id="conference-filter" value={conference} onChange={event => changeFilters({ conference: event.target.value, team: "" })}>
+            <option value="All">All conferences</option>
+            {CONFERENCES.map(value => <option key={value} value={value}>{value}</option>)}
           </select>
-
           <label htmlFor="team-filter">Team</label>
-          <select id="team-filter" value={team} onChange={handleTeamChange}>
+          <select id="team-filter" value={team} onChange={event => changeFilters({ team: event.target.value, conference: "All" })}>
             <option value="">All teams</option>
+            {team && !data.teams.some(item => item.name === team) && <option value={team}>{team}</option>}
             {teamGroups.top25.length > 0 && <optgroup label="AP Top 25">{teamGroups.top25.map(item => <option key={item.name} value={item.name}>#{item.rank} {item.name}</option>)}</optgroup>}
             {teamGroups.remaining.map(group => <optgroup key={group.name} label={group.name}>{group.teams.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}</optgroup>)}
           </select>
         </div>
-      </div>
+      </section>
 
-      {loading && <div className="schedule-message">Loading games...</div>}
-      {error && <div className="schedule-message error-message">{error}</div>}
-
-        {!loading && !error && (
-          <>
-            {/* FIX: only show message if we have actually loaded once */}
-            {week != null && sortedGames.length === 0 && (
-              <div className="schedule-message">No games found for this selection.</div>
-            )}
-
-            <ul className="games-grid">
-              {sortedGames.map(game => (
-                <li key={game._id || game.id} className="game-card">
-                  <GameCard game={game} />
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
-    </>
-  )
-}
-
-// GameCard and TeamBlock remain unchanged
-
-
-// GameCard and TeamBlock remain unchanged
-
-
-function GameCard({ game }) {
-  const start = new Date(game.startDate);
-
-  // Format date → "Nov 6"
-  const formattedDate = start.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric"
-  });
-
-  // Format time → "7:15 PM"
-  const formattedTime = start.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit"
-  });
-
-  const homeScore = game.homePoints ?? "-";
-  const awayScore = game.awayPoints ?? "-";
-
-  const spread = game.spread ?? null;
-  const overUnder = game.overUnder ?? null;
-
-  return (
-    <>
-      <div className="game-card-content">
-        {/* TOP RIGHT — small game info */}
-        <div className="game-meta">
-          <span className="meta-date">{formattedDate}</span><span className="meta-time">{formattedTime}</span>
+      <div className="schedule-toolbar">
+        <div className="week-navigation" role="group" aria-label="Browse weeks">
+          <button type="button" className="schedule-button" disabled={week === "all" || weekIndex <= 0} onClick={() => changeFilters({ week: weeks[weekIndex - 1] })} aria-label="Previous week">← <span>Previous</span></button>
+          <span className="week-caption">{week === "all" ? "All weeks" : selectedWeek != null ? `Week ${selectedWeek}` : "Current week"}</span>
+          <button type="button" className="schedule-button" disabled={week === "all" || weekIndex < 0 || weekIndex >= weeks.length - 1} onClick={() => changeFilters({ week: weeks[weekIndex + 1] })} aria-label="Next week"><span>Next</span> →</button>
         </div>
-
-        {/* TEAMS FULL WIDTH */}
-        <div className="teams-fullwidth">
-          <TeamBlock name={game.awayTeam} score={awayScore} logo={game.awayLogo} rank={game.awayApRank} />
-          <TeamBlock name={game.homeTeam} score={homeScore} logo={game.homeLogo} rank={game.homeApRank} />
-        </div>
-        {/* BOTTOM — BETTING INFO */}
-        {(spread !== null || overUnder !== null) && (
-          <div className="betting-card">
-            {spread !== null && <p>Spread: {spread}</p>}
-            {overUnder !== null && <p>O/U: {overUnder}</p>}
-          </div>
-        )}
+        <button type="button" className="schedule-button" disabled={loading} onClick={() => setRefresh(value => value + 1)}>{loading ? "Checking…" : "Refresh scores"}</button>
       </div>
-    </>
-  );
+      <p className="schedule-data-note">All kickoff times in {timeZone}. Scores may be delayed.
+        {updatedAt && <> Data updated {updatedAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short", timeZone: displayTimeZone })}.</>}
+        {checkedAt && hasMatchingData && <> Last checked {checkedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: displayTimeZone })}.</>}
+      </p>
 
-}
-
-
-
-function TeamBlock({ name, score, logo, rank }) {
-  const fallback = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
-      <rect width="100%" height="100%" fill="#e5e7eb"/>
-      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="28" fill="#6b7280">${name}</text>
-    </svg>
-  `)
-
-  return (
-    <div className="team-info">
-      <div className="team-info-left">
-        <div className="team-logo">
-          <img src={logo || fallback} alt={`${name} logo`} onError={(e)=>{ e.currentTarget.src=fallback }} />
-        </div>
-        <div className="team-name">
-          {rank != null && <span className="team-rank">#{rank}</span>} {name}
-        </div>
-      </div>
-      <div className="team-info-right">
-        <div className="small-score">{score}</div>
+      {error && <div className="schedule-message error-message" role="alert">
+        <p>{error}{hasMatchingData ? " Your last loaded scores are still shown below." : ""}</p>
+        <button type="button" className="schedule-button" onClick={() => setRefresh(value => value + 1)}>Try again</button>
+      </div>}
+      <div role="status" className="sr-only">{loading ? "Loading games" : error || `${games.length} matchups loaded`}</div>
+      {loading && !hasMatchingData && <div className="schedule-skeleton" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <div key={index} />)}</div>}
+      {!loading && !error && hasMatchingData && games.length === 0 && <div className="schedule-message schedule-empty">
+        <h2>No games in this selection</h2>
+        <p>Try another week or see every conference.</p>
+        <button type="button" className="schedule-button" onClick={() => changeFilters({ conference: "All", team: "" })}>Show all teams</button>
+        {week !== "current" && <button type="button" className="schedule-button" onClick={() => changeFilters({ week: "current" })}>Go to current week</button>}
+      </div>}
+      <div className="schedule-days" aria-busy={loading}>
+        {groups.map(group => <section key={group.label} className="schedule-day" aria-label={group.label}>
+          <h2 className="schedule-date-heading">{group.label}<span>{group.games.length} {group.games.length === 1 ? "game" : "games"}</span></h2>
+          <ul className="games-grid">{group.games.map(game => <li key={game._id || game.id} className="game-card"><GameCard game={game} /></li>)}</ul>
+        </section>)}
       </div>
     </div>
-  )
+  );
+}
+
+function GameCard({ game }) {
+  const timeZone = useTimeZone();
+  const status = gameStatus(game);
+  const start = game.startDate ? new Date(game.startDate) : null;
+  const time = !game.startTimeTBD && start && Number.isFinite(start.getTime())
+    ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone, timeZoneName: "short" }) : "Time TBD";
+  const spread = spreadLabel(game);
+  const hasScores = game.homePoints != null && game.awayPoints != null;
+  const isFinal = game.completed === true && hasScores;
+
+  return <article className="game-card-content" aria-label={`${game.awayTeam} at ${game.homeTeam}`}>
+    <div className="game-meta"><span className={`game-status status-${status.kind}`}>{status.label}</span><span className="meta-time">{time}</span></div>
+    <div className="teams-fullwidth">
+      <TeamBlock name={game.awayTeam} score={game.awayPoints} logo={game.awayLogo} rank={game.awayApRank} winner={isFinal && game.awayPoints > game.homePoints} />
+      <TeamBlock name={game.homeTeam} score={game.homePoints} logo={game.homeLogo} rank={game.homeApRank} winner={isFinal && game.homePoints > game.awayPoints} />
+    </div>
+    <div className="game-watch"><span><span className="game-detail-label">Watch</span> {game.outlet || "TV to be announced"}</span>{game.venue && <span className="game-venue">{game.venue}</span>}</div>
+    {(spread || game.overUnder != null) && <div className="betting-card">
+      {spread && <p><span>Spread</span> {spread}</p>}
+      {game.overUnder != null && <p><span>Total</span> {game.overUnder}</p>}
+    </div>}
+  </article>;
+}
+
+function TeamBlock({ name, score, logo, rank, winner }) {
+  const [failedLogo, setFailedLogo] = useState(null);
+  return <div className={`team-info${winner ? " team-winner" : ""}`}>
+    <div className="team-info-left">
+      <div className="team-logo" aria-hidden="true">{logo && failedLogo !== logo
+        ? <img src={logo} alt="" loading="lazy" onError={() => setFailedLogo(logo)} />
+        : <span className="team-initials">{name?.slice(0, 2).toUpperCase()}</span>}</div>
+      <div className="team-name">{rank != null && <span className="team-rank">#{rank} </span>}{name}{winner && <span className="sr-only">, winner</span>}</div>
+    </div>
+    <div className="small-score" aria-label={score != null ? `${score} points` : "No score yet"}>{score ?? "—"}</div>
+  </div>;
 }

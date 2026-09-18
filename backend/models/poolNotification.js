@@ -7,6 +7,7 @@ const poolNotificationSchema = new mongoose.Schema({
   season: { type: Number, required: true },
   week: { type: Number, required: true },
   sentAt: { type: Date, default: Date.now },
+  status: { type: String, enum: ["sending", "sent", "failed", "unknown"], default: "sent" },
 });
 
 poolNotificationSchema.index({ type: 1, poolId: 1, userId: 1, season: 1, week: 1 }, { unique: true });

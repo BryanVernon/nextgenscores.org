@@ -5,7 +5,7 @@ import axios from "../../api";
 import "./Auth.css";
 
 export default function ResetPassword() {
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm();
   const [params] = useSearchParams();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -16,7 +16,7 @@ export default function ResetPassword() {
     setMessage("");
     if (password !== confirmPassword) return setError("Passwords do not match");
     try {
-      const response = await axios.post("/auth/reset-password", { token, password });
+      const response = await axios.post("/auth/reset-password", { token, password }, { timeout: 20000 });
       setMessage(response.data.message);
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Unable to reset password");
@@ -27,12 +27,14 @@ export default function ResetPassword() {
 
   return <div className="auth-page"><div className="auth-panel">
     <p className="eyebrow">Account recovery</p><h1>Choose a new <span>password</span></h1>
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <input {...register("password", { required: true })} type="password" autoComplete="new-password" minLength="8" placeholder="New password (8+ characters)" />
-      <input {...register("confirmPassword", { required: true })} type="password" autoComplete="new-password" minLength="8" placeholder="Confirm new password" />
-      <button className="auth-submit" type="submit">Update password</button>
-    </form>
-    {message && <p className="auth-success">{message} <Link to="/login">Log in</Link></p>}
-    {error && <p className="auth-error">{error}</p>}
+    {!message && <form onSubmit={handleSubmit(onSubmit)} aria-busy={isSubmitting}>
+      <label className="auth-field">New password<input {...register("password", { required: true })} type="password" autoComplete="new-password" minLength={8} aria-describedby="reset-password-help" required /></label>
+      <p id="reset-password-help" className="auth-help">Use at least 8 characters.</p>
+      <label className="auth-field">Confirm new password<input {...register("confirmPassword", { required: true })} type="password" autoComplete="new-password" minLength={8} required /></label>
+      <button className="auth-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? "Updating..." : "Update password"}</button>
+    </form>}
+    {message && <p className="auth-success" role="status">{message} <Link to="/login">Log in</Link></p>}
+    {error && <p className="auth-error" role="alert">{error} <Link to="/forgot-password">Request a new link</Link></p>}
+    <p className="auth-switch"><Link to="/schedule">Browse scores</Link></p>
   </div></div>;
 }

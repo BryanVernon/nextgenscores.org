@@ -9,10 +9,12 @@ environment variable locally and in Render:
 THE_ODDS_API_KEY=your_the_odds_api_key
 ```
 
-On the next `/api/fetch-games?year=YYYY` refresh, the importer makes one U.S.
+On the next authenticated administrator `POST /api/fetch-games?year=YYYY`
+request (with `Content-Type: application/json` and an empty JSON body), the importer makes one U.S.
 spreads-and-totals request, preserves CFBD lines, and fills only missing values
 from The Odds API. It never invents a line for a game that no sportsbook has
-priced.
+priced. The refresh updates games by ID without deleting the existing schedule.
+`POST /api/sync-game-outlets?year=YYYY` uses the same administrator and JSON requirements.
 
 The free plan includes 500 monthly credits. This importer request normally uses
 two credits because it asks for two markets: spreads and totals. Do not call the

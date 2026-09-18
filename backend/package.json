@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "scrape:cfb": "node scripts/scrapeGames.js",
-    "notify:pools": "node scripts/sendPoolNotifications.js"
+    "notify:pools": "node scripts/sendPoolNotifications.js",
+    "notify:friday": "node scripts/sendFridayReminders.js",
+    "admin:promote": "node scripts/promoteAdmin.js",
+    "test": "node --test"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -17,6 +20,9 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.4",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.10"
+    "nodemailer": "^10.0.10"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

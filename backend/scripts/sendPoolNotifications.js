@@ -4,9 +4,11 @@ import Pool from "../models/pool.js";
 import Pick from "../models/pick.js";
 import User from "../models/User.js";
 import PoolNotification from "../models/poolNotification.js";
-import { sendLeaderboardEmail, sendPickReminderEmail } from "../utils/mailer.js";
+import { sendLeaderboardEmail } from "../utils/mailer.js";
+import { footballSeason } from "../utils/timeZone.js";
 import { isEligible } from "../utils/poolTiming.js";
 import { selectGamesForPool } from "../utils/poolGameSelection.js";
+import { getPickResult, isGameComplete } from "../utils/leaderboardResults.js";
 
 dotenv.config();
 
@@ -25,7 +27,7 @@ async function getCurrentWeek(season) {
 }
 
 function standings(pool, games, picks, users) {
-  const completedGames = games.filter(game => game.homePoints != null && game.awayPoints != null);
+  const completedGames = games.filter(isGameComplete);
   const picksByUser = new Map();
   picks.forEach(pick => {
     const userId = pick.userId.toString();
@@ -37,9 +39,7 @@ function standings(pool, games, picks, users) {
     const userPicks = picksByUser.get(participantId.toString()) || new Map();
     const correct = completedGames.reduce((total, game) => {
       const pick = userPicks.get(Number(game.id));
-      const homeWon = Number(game.homePoints) > Number(game.awayPoints);
-      const awayWon = Number(game.awayPoints) > Number(game.homePoints);
-      return total + ((pick === "home" && homeWon) || (pick === "away" && awayWon) ? 1 : 0);
+      return total + (getPickResult(game, pick, pool.scoringType) === "correct" ? 1 : 0);
     }, 0);
     return { userId: participantId, name: usersById.get(participantId.toString())?.name || "Player", correct, picks: userPicks.size };
   }).sort((a, b) => b.correct - a.correct || b.picks - a.picks || a.name.localeCompare(b.name));
@@ -65,13 +65,12 @@ async function recordSent(type, poolId, userId, season, week) {
 
 async function run() {
   await mongoose.connect(process.env.MONGODB_URI);
-  const season = Number(process.env.CFB_YEAR) || new Date().getFullYear();
+  const season = Number(process.env.CFB_YEAR) || footballSeason();
   const week = await getCurrentWeek(season);
   if (week == null) return console.log("No current week is available.");
 
   const games = await Game.find({ season, week }).sort({ startDate: 1 }).lean();
   const pools = await Pool.find({});
-  const now = Date.now();
   let sent = 0;
 
   for (const pool of pools) {
@@ -81,22 +80,9 @@ async function run() {
     if (!weekGames.length) continue;
     const users = await User.find({ _id: { $in: pool.participants } }).select("name email");
     const picks = await Pick.find({ poolId: pool._id, season, week });
-    const firstGameAt = Math.min(...weekGames.map(game => new Date(game.startDate).getTime()));
-    const isReminderWindow = now >= firstGameAt - 24 * 60 * 60 * 1000 && now < firstGameAt;
+    // Friday missing-pick reminders are handled by sendFridayReminders.js.
 
-    if (isReminderWindow) {
-      for (const user of users) {
-        const submitted = new Set(picks.filter(pick => pick.userId.toString() === user._id.toString()).map(pick => Number(pick.gameId)));
-        const hasAllPicks = weekGames.every(game => submitted.has(Number(game.id)));
-        if (!hasAllPicks && !(await wasSent("pick-reminder", pool._id, user._id, season, week))) {
-          await sendPickReminderEmail({ to: user.email, name: user.name, poolName: pool.name, week, firstGameAt });
-          await recordSent("pick-reminder", pool._id, user._id, season, week);
-          sent += 1;
-        }
-      }
-    }
-
-    const complete = weekGames.every(game => game.homePoints != null && game.awayPoints != null);
+    const complete = weekGames.every(isGameComplete);
     if (complete) {
       const leaderboard = standings(pool, weekGames, picks, users);
       for (const user of users) {

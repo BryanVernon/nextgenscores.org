@@ -64,10 +64,19 @@
   cursor: pointer;
 }
 .logout-button:hover { border-color: #7ce0b4; color: #7ce0b4; }
+.mobile-account-actions { display: none; }
+.nav-links .nav-signup { padding: 8px 14px; border-radius: 7px; background: #7ce0b4; color: #17312b; font-weight: 800; }
+.skip-link { position: fixed; top: 8px; left: 8px; z-index: 200; transform: translateY(-150%); padding: 12px 18px; border-radius: 6px; background: white; color: #17312b; font-weight: 700; }
+.skip-link:focus { transform: translateY(0); }
+.session-recovery-actions { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; }
+.site-nav a:focus-visible, .site-nav button:focus-visible, .mobile-nav a:focus-visible { outline: 3px solid #7ce0b4; outline-offset: 3px; }
 
 @media (max-width: 768px) {
   .site-nav { min-height: 60px; padding: 13px 20px; }
   .nav-links { display: none; }
+  .mobile-account-actions { display: flex; align-items: center; gap: 10px; }
+  .mobile-account-actions a { color: #c2d4ce; font-size: .8rem; }
+  .mobile-account-actions .logout-button { min-height: 40px; }
 }
 
 @media (max-width: 480px) {

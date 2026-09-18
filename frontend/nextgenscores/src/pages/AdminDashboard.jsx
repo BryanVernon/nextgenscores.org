@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
 import authFetch from "../authFetch";
+import useTimeZone from "../useTimeZone";
 
 const API_BASE = import.meta.env.MODE === "development" ? `${window.location.protocol}//${window.location.hostname}:3002` : "https://nextgenscores-org.onrender.com";
 
@@ -11,6 +12,7 @@ async function readResponse(response) {
 }
 
 export default function AdminDashboard() {
+  const timeZone = useTimeZone();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -58,10 +60,10 @@ export default function AdminDashboard() {
         <article><span>Saved picks</span><strong>{data.counts.picks}</strong></article>
       </section>
       <section className="admin-section"><div><p className="eyebrow">Accounts</p><h2>Users</h2></div>
-        <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>User</th><th>Role</th><th>Favorites</th><th>Joined</th><th aria-label="Actions" /></tr></thead><tbody>{data.users.map(user => <tr key={user.id}><td><strong>{user.name}</strong><small>{user.email}</small></td><td><span className={`role-badge ${user.role}`}>{user.role}</span></td><td>{user.favoriteTeams?.join(", ") || "—"}</td><td>{new Date(user.createdAt).toLocaleDateString()}</td><td><button className="admin-delete" onClick={() => remove("users", user)} disabled={busyId === `users-${user.id}` || user.role === "admin"}>{busyId === `users-${user.id}` ? "Deleting..." : user.role === "admin" ? "Protected" : "Delete user"}</button></td></tr>)}</tbody></table></div>
+        <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>User</th><th>Role</th><th>Favorites</th><th>Joined</th><th aria-label="Actions" /></tr></thead><tbody>{data.users.map(user => <tr key={user.id}><td><strong>{user.name}</strong><small>{user.email}</small></td><td><span className={`role-badge ${user.role}`}>{user.role}</span></td><td>{user.favoriteTeams?.join(", ") || "—"}</td><td>{new Date(user.createdAt).toLocaleDateString("en-US", { timeZone })}</td><td><button className="admin-delete" onClick={() => remove("users", user)} disabled={busyId === `users-${user.id}` || user.role === "admin"}>{busyId === `users-${user.id}` ? "Deleting..." : user.role === "admin" ? "Protected" : "Delete user"}</button></td></tr>)}</tbody></table></div>
       </section>
       <section className="admin-section"><div><p className="eyebrow">Competition</p><h2>Pick 'Em pools</h2></div>
-        <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Pool</th><th>Conference</th><th>Scoring</th><th>Players</th><th>Created</th><th aria-label="Actions" /></tr></thead><tbody>{data.pools.map(pool => <tr key={pool.id}><td><strong>{pool.name}</strong></td><td>{pool.conference}</td><td>{pool.scoringType === "spread" ? "Against the spread" : "Straight up"}</td><td>{pool.participants}</td><td>{new Date(pool.createdAt).toLocaleDateString()}</td><td><button className="admin-delete" onClick={() => remove("pools", pool)} disabled={busyId === `pools-${pool.id}`}>{busyId === `pools-${pool.id}` ? "Deleting..." : "Delete pool"}</button></td></tr>)}</tbody></table></div>
+        <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Pool</th><th>Conference</th><th>Scoring</th><th>Players</th><th>Created</th><th aria-label="Actions" /></tr></thead><tbody>{data.pools.map(pool => <tr key={pool.id}><td><strong>{pool.name}</strong></td><td>{pool.conference}</td><td>{pool.scoringType === "spread" ? "Against the spread" : "Straight up"}</td><td>{pool.participants}</td><td>{new Date(pool.createdAt).toLocaleDateString("en-US", { timeZone })}</td><td><button className="admin-delete" onClick={() => remove("pools", pool)} disabled={busyId === `pools-${pool.id}`}>{busyId === `pools-${pool.id}` ? "Deleting..." : "Delete pool"}</button></td></tr>)}</tbody></table></div>
       </section>
     </>}
   </div>;

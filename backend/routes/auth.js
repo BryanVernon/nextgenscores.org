@@ -3,18 +3,10 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../models/User.js";
-import { isConfiguredAdmin } from "../utils/admin.js";
 import requireAuth from "../middleware/requireAuth.js";
 import { sendPasswordResetEmail } from "../utils/mailer.js";
+import { isValidTimeZone, userTimeZone } from "../utils/timeZone.js";
 const router = express.Router();
-
-async function syncConfiguredAdmin(user) {
-  if (isConfiguredAdmin(user.email) && user.role !== "admin") {
-    user.role = "admin";
-    await user.save();
-  }
-  return user;
-}
 
 function safeUser(user) {
   return {
@@ -23,6 +15,7 @@ function safeUser(user) {
     email: user.email,
     role: user.role,
     favoriteTeams: user.favoriteTeams,
+    timeZone: userTimeZone(user.timeZone),
     theme: user.theme || { mode: "default", team: null },
   };
 }
@@ -72,7 +65,7 @@ router.post("/signup", async (req, res) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ message: "Email already in use" });
 
-    const user = await syncConfiguredAdmin(await User.createWithPassword({ name: fullName, firstName, lastName, email, password, favoriteTeams }));
+    const user = await User.createWithPassword({ name: fullName, firstName, lastName, email, password, favoriteTeams });
     const token = signToken(user._id);
     sendTokenCookie(req, res, token);
 
@@ -96,7 +89,6 @@ router.post("/login", async (req, res) => {
     const match = await user.comparePassword(password);
     if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
-    await syncConfiguredAdmin(user);
     const token = signToken(user._id);
     sendTokenCookie(req, res, token);
 
@@ -181,7 +173,6 @@ router.get("/me", requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
     if (!user) return res.status(401).json({ message: "Not authenticated" });
-    await syncConfiguredAdmin(user);
 
     res.json({ user: safeUser(user) });
   } catch (err) {
@@ -190,20 +181,15 @@ router.get("/me", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/favorite-teams", async (req, res) => {
+router.put("/favorite-teams", requireAuth, async (req, res) => {
   try {
-    const cookieName = process.env.COOKIE_NAME || "ngs_token";
-    const token = req.cookies?.[cookieName];
-    if (!token) return res.status(401).json({ message: "Not authenticated" });
-
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
     const { favoriteTeams } = req.body;
     if (!Array.isArray(favoriteTeams)) {
       return res.status(400).json({ message: "favoriteTeams must be an array" });
     }
 
     const user = await User.findByIdAndUpdate(
-      payload.sub,
+      req.userId,
       { favoriteTeams },
       { new: true }
     );
@@ -218,12 +204,15 @@ router.put("/favorite-teams", async (req, res) => {
 
 router.put("/preferences", requireAuth, async (req, res) => {
   try {
-    const { favoriteTeams, theme } = req.body;
+    const { favoriteTeams, theme, timeZone } = req.body;
     const mode = theme?.mode;
     const team = theme?.team || null;
 
     if (!Array.isArray(favoriteTeams)) {
       return res.status(400).json({ message: "favoriteTeams must be an array" });
+    }
+    if (timeZone !== undefined && !isValidTimeZone(timeZone)) {
+      return res.status(400).json({ message: "Choose a valid timezone" });
     }
     if (!["default", "team"].includes(mode)) {
       return res.status(400).json({ message: "theme mode must be default or team" });
@@ -234,7 +223,7 @@ router.put("/preferences", requireAuth, async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { favoriteTeams, theme: { mode, team: mode === "team" ? team : null } },
+      { favoriteTeams, theme: { mode, team: mode === "team" ? team : null }, ...(timeZone !== undefined ? { timeZone } : {}) },
       { new: true }
     );
     if (!user) return res.status(404).json({ message: "User not found" });
