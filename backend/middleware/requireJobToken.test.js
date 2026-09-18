@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
-import requireJobToken from "./requireJobToken.js";
+import requireJobToken, { requireJobTokenFor } from "./requireJobToken.js";
 
 test("job trigger only accepts the configured bearer token", async t => {
   const previous = process.env.REMINDER_JOB_TOKEN;
@@ -21,4 +21,23 @@ test("job trigger only accepts the configured bearer token", async t => {
   assert.equal((await fetch(url, { method: "POST" })).status, 401);
   assert.equal((await fetch(url, { method: "POST", headers: { authorization: "Bearer wrong-token" } })).status, 401);
   assert.equal((await fetch(url, { method: "POST", headers: { authorization: "Bearer test-reminder-token" } })).status, 202);
+});
+
+test("job token middleware can use a separate secret for another job", async t => {
+  const previous = process.env.SCOREBOARD_JOB_TOKEN;
+  process.env.SCOREBOARD_JOB_TOKEN = "test-scoreboard-token";
+  t.after(() => {
+    if (previous == null) delete process.env.SCOREBOARD_JOB_TOKEN;
+    else process.env.SCOREBOARD_JOB_TOKEN = previous;
+  });
+  const app = express();
+  app.post("/job", requireJobTokenFor("SCOREBOARD_JOB_TOKEN"), (req, res) => res.sendStatus(202));
+  const server = await new Promise(resolve => {
+    const instance = app.listen(0, "127.0.0.1", () => resolve(instance));
+  });
+  t.after(() => new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())));
+  const url = `http://127.0.0.1:${server.address().port}/job`;
+
+  assert.equal((await fetch(url, { method: "POST", headers: { authorization: "Bearer test-reminder-token" } })).status, 401);
+  assert.equal((await fetch(url, { method: "POST", headers: { authorization: "Bearer test-scoreboard-token" } })).status, 202);
 });

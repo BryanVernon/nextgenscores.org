@@ -6,7 +6,9 @@ import dotenv from "dotenv";
 
 const backend = fileURLToPath(new URL("../", import.meta.url));
 const config = dotenv.config({ path: path.join(backend, ".env") });
-if (config.error) throw new Error("Cannot load backend/.env for scoreboard refresh");
+if (config.error && (!process.env.MONGODB_URI || !process.env.CFB_API_KEY)) {
+  throw new Error("Cannot load scoreboard refresh configuration");
+}
 
 const logDirectory = path.join(backend, "logs");
 mkdirSync(logDirectory, { recursive: true });

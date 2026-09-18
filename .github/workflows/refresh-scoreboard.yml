@@ -2,12 +2,17 @@ name: Refresh Scoreboard
 
 on:
   schedule:
-    # Twice daily, away from the busy top of the hour (UTC).
-    - cron: '23 6,18 * * *'
+    # GitHub Actions cron is UTC. Render allows only 7 AM and 7 PM America/Chicago,
+    # so this remains correct during both CST and CDT.
+    - cron: '17 * * * *'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Run immediately, even outside the normal 7 AM/7 PM Central windows'
+        type: boolean
+        default: true
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: refresh-scoreboard
@@ -17,43 +22,21 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: backend
     env:
-      MONGODB_URI: ${{ secrets.MONGODB_URI }}
-      CFB_API_KEY: ${{ secrets.CFB_API_KEY }}
-      CFB_GAMES_REFRESH_HOURS: '6'
+      SCOREBOARD_JOB_URL: https://nextgenscores-org.onrender.com/api/jobs/scoreboard-refresh
+      SCOREBOARD_JOB_TOKEN: ${{ secrets.SCOREBOARD_JOB_TOKEN }}
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force && 'true' || 'false' }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Check required configuration
+      - name: Trigger the protected Render scoreboard refresh
         run: |
           node --input-type=module -e '
-            const missing = ["MONGODB_URI", "CFB_API_KEY"].filter(key => !process.env[key]);
-            if (missing.length) {
-              console.error("Add these repository Actions secrets: " + missing.join(", "));
+            if (!process.env.SCOREBOARD_JOB_TOKEN) {
+              console.error("Add the SCOREBOARD_JOB_TOKEN Actions secret.");
               process.exit(1);
             }
           '
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Refresh games and scores
-        # No week restriction: completed games in earlier weeks receive corrections too.
-        # In January/February, also refresh the prior season's bowl/playoff results.
-        run: |
-          npm run scrape:cfb
-          month=$(date -u +%m)
-          if [ "$month" = "01" ] || [ "$month" = "02" ]; then
-            CFB_YEAR=$(($(date -u +%Y) - 1)) npm run scrape:cfb
-          fi
+          curl --fail-with-body --show-error --retry 2 --retry-all-errors --max-time 600 \
+            --request POST "$SCOREBOARD_JOB_URL" \
+            --header "Authorization: Bearer $SCOREBOARD_JOB_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"force\":$FORCE}"

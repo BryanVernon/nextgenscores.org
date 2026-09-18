@@ -5,6 +5,7 @@ import { FEATURED_LINEUP, lineupSettings, lineupLabel } from "../gameLineup";
 import authFetch from "../authFetch";
 import LeaderboardEntry from "../components/LeaderboardEntry";
 import { pickLocked, savedPickSummary } from "../pickState";
+import { poolPickStatus } from "../poolPickStatus";
 import useTimeZone from "../useTimeZone";
 import { Link } from "react-router-dom";
 
@@ -57,10 +58,46 @@ export default function PickEmPage() {
 
   return <div className="pickem-page">
     <p className="eyebrow">Compete with your people</p><h1>Pick 'Em <span>Pools</span></h1><p className="pickem-intro">Make your calls, track the field, and see who knows college football best.</p>
-    {view === "home" && <><div className="home-buttons"><button className="btn" onClick={() => setView("create")}>Create Pool</button></div><section className="my-pools-section"><div><p className="eyebrow">Your pools</p><h2>Ready for this week</h2></div>{myPoolsLoading ? <p role="status">Loading your pools...</p> : myPoolsError ? <div><p className="error-message" role="alert">{myPoolsError}</p><button className="btn" onClick={retryMyPools}>Try again</button></div> : myPools.length === 0 ? <p className="my-pools-empty">You have not joined any pools yet. Browse the available pools below to get started.</p> : <div className="my-pools-list">{myPools.map(item => <button className="my-pool-card" key={item.id} onClick={() => openPicks(item)}><span><strong>{item.name}</strong><small>{lineupLabel(item)} · {item.participants}/{item.limit ?? 10} players{item.visibility === "private" ? " · Private" : ""}</small>{item.inviteCode && <small>Invite: {item.id} / {item.inviteCode}</small>}</span><span aria-hidden="true">→</span></button>)}</div>}</section>{!myPoolsLoading && !myPoolsError && <JoinPool joinedPoolIds={myPools.map(item => item.id)} onJoined={joinPool} />}</>}
+    {view === "home" && <>
+      <section className="pickem-next-step" aria-labelledby="pickem-next-step-title">
+        <p className="eyebrow">Your next step</p>
+        <h2 id="pickem-next-step-title">Make your picks</h2>
+        <p>Choose one of your pools below. We’ll show exactly how many game picks you still need to submit.</p>
+      </section>
+      <div className="home-buttons"><button className="btn" onClick={() => setView("create")}>Create Pool</button></div>
+      <section className="my-pools-section"><div><p className="eyebrow">Your pools</p><h2>Pick a pool to get started</h2></div>{myPoolsLoading ? <p role="status">Loading your pools...</p> : myPoolsError ? <div><p className="error-message" role="alert">{myPoolsError}</p><button className="btn" onClick={retryMyPools}>Try again</button></div> : myPools.length === 0 ? <p className="my-pools-empty">You have not joined any pools yet. Browse the available pools below to get started.</p> : <div className="my-pools-list">{myPools.map(item => <PoolPickCard key={item.id} pool={item} onOpen={() => openPicks(item)} />)}</div>}</section>{!myPoolsLoading && !myPoolsError && <JoinPool joinedPoolIds={myPools.map(item => item.id)} onJoined={joinPool} />}</>}
+
     {view === "create" && <CreatePool goBack={() => setView("home")} openPicks={joinPool} />}
     {view === "picks" && <WeeklyPicks pool={pool} goBack={() => setView("home")} />}
   </div>;
+}
+
+function PoolPickCard({ pool, onOpen }) {
+  const [status, setStatus] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    authFetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { signal: controller.signal })
+      .then(readApiResponse)
+      .then(body => {
+        if (!Array.isArray(body?.games)) throw new Error("Missing games");
+        if (!controller.signal.aborted) setStatus(poolPickStatus(body.games, body.picks || {}));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setStatus({ complete: false, message: "Open this pool to check this week’s picks", action: "Open pool" });
+      });
+    return () => controller.abort();
+  }, [pool.id]);
+
+  return <article className="my-pool-card">
+    <div>
+      <strong>{pool.name}</strong>
+      <small>{lineupLabel(pool)} · {pool.participants}/{pool.limit ?? 10} players{pool.visibility === "private" ? " · Private" : ""}</small>
+      {pool.inviteCode && <small>Invite: {pool.id} / {pool.inviteCode}</small>}
+      {status ? <p className={status.complete ? "pool-pick-status complete" : "pool-pick-status"}>{status.message}</p> : <p className="pool-pick-status loading">Checking your picks...</p>}
+    </div>
+    <button className="btn make-picks-btn" onClick={onOpen}>{status?.action || "Make picks"} <span aria-hidden="true">→</span></button>
+  </article>;
 }
 
 function JoinPool({ joinedPoolIds, onJoined }) {

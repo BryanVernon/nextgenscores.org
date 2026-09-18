@@ -10,10 +10,11 @@ import cookieParser from "cookie-parser";
 import poolRoutes from "./routes/pools.js";
 import adminRoutes from "./routes/admin.js";
 import requireMaintenance from "./middleware/requireMaintenance.js";
-import requireJobToken from "./middleware/requireJobToken.js";
+import requireJobToken, { requireJobTokenFor } from "./middleware/requireJobToken.js";
 import { sendPickReminderEmail } from "./utils/mailer.js";
 import { buildReminderPreview } from "./utils/reminderPreview.js";
 import { requestedScheduleWeek, readProviderArray, storeImportedGames } from "./utils/scheduleData.js";
+import { isScoreboardRefreshTime } from "./utils/scoreboardSchedule.js";
 
 dotenv.config();
 
@@ -529,6 +530,9 @@ app.use("/api/pools", poolRoutes);
 app.use("/api/admin", adminRoutes);
 
 const fridayReminderScript = fileURLToPath(new URL("./scripts/sendFridayReminders.js", import.meta.url));
+const scoreboardRefreshScript = fileURLToPath(new URL("./scripts/refreshScoreboardLocal.js", import.meta.url));
+const requireScoreboardJobToken = requireJobTokenFor("SCOREBOARD_JOB_TOKEN");
+let scoreboardRefreshRunning = false;
 
 function runFridayReminderJob(dryRun) {
   return new Promise((resolve, reject) => {
@@ -544,6 +548,29 @@ function runFridayReminderJob(dryRun) {
   });
 }
 
+function runScoreboardRefreshJob() {
+  if (scoreboardRefreshRunning) return Promise.reject(new Error("Scoreboard refresh already running"));
+  scoreboardRefreshRunning = true;
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [scoreboardRefreshScript], {
+      env: process.env,
+      windowsHide: true,
+    });
+    let output = "";
+    child.stdout.on("data", data => { output += data; });
+    child.stderr.on("data", data => { output += data; });
+    child.once("error", error => {
+      scoreboardRefreshRunning = false;
+      reject(error);
+    });
+    child.once("close", code => {
+      scoreboardRefreshRunning = false;
+      if (code === 0) resolve(output.trim());
+      else reject(new Error(`Scoreboard refresh exited with code ${code}`));
+    });
+  });
+}
+
 // GitHub Actions can trigger this on schedule without needing direct MongoDB access.
 app.post("/api/jobs/friday-pick-reminders", requireJobToken, async (req, res) => {
   try {
@@ -553,6 +580,21 @@ app.post("/api/jobs/friday-pick-reminders", requireJobToken, async (req, res) =>
   } catch (error) {
     console.error("Remote Friday reminder job failed:", error.message);
     res.status(500).json({ message: "Friday reminder job failed" });
+  }
+});
+
+// GitHub Actions invokes this hourly; this gate preserves 7 AM/7 PM Central through DST.
+app.post("/api/jobs/scoreboard-refresh", requireScoreboardJobToken, async (req, res) => {
+  if (req.body?.force !== true && !isScoreboardRefreshTime(Date.now())) {
+    return res.status(202).json({ message: "Scoreboard refresh skipped outside its Central-time window" });
+  }
+  try {
+    const output = await runScoreboardRefreshJob();
+    console.log("Scoreboard refresh triggered remotely:", output);
+    res.status(202).json({ message: "Scoreboard refresh completed", output });
+  } catch (error) {
+    console.error("Remote scoreboard refresh failed:", error.message);
+    res.status(500).json({ message: "Scoreboard refresh failed" });
   }
 });
 
