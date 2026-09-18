@@ -558,7 +558,14 @@ app.post("/api/jobs/friday-pick-reminders", requireJobToken, async (req, res) =>
 
 app.post("/api/jobs/friday-pick-reminders/preview", requireJobToken, async (req, res) => {
   try {
-    const preview = buildReminderPreview(req.body?.email);
+    const season = new Date().getFullYear();
+    const weeks = await Game.aggregate([
+      { $match: { season } },
+      { $group: { _id: "$week", startDate: { $min: "$startDate" } } },
+      { $project: { _id: 0, week: "$_id", startDate: 1 } },
+      { $sort: { startDate: 1 } },
+    ]);
+    const preview = buildReminderPreview(req.body?.email, { week: currentWeekFromMetadata(weeks) ?? 1 });
     await sendPickReminderEmail({
       ...preview,
       firstGameAt: Date.now() + 24 * 60 * 60 * 1000,
