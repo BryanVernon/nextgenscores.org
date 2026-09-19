@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { poolPickStatus } from "../src/poolPickStatus.js";
+import { poolPickStatus, shouldShowPickPrompt } from "../src/poolPickStatus.js";
 
 const now = Date.parse("2026-09-18T12:00:00Z");
 const games = [
@@ -31,4 +31,10 @@ test("locked games with missing picks are never presented as complete", () => {
     message: "Picks are locked for this week",
     action: "View pool",
   });
+});
+
+test("the pick prompt disappears only after every pool is complete", () => {
+  assert.equal(shouldShowPickPrompt(["a", "b"], { a: { complete: true }, b: { complete: true } }), false);
+  assert.equal(shouldShowPickPrompt(["a", "b"], { a: { complete: true } }), true);
+  assert.equal(shouldShowPickPrompt([], {}), false);
 });

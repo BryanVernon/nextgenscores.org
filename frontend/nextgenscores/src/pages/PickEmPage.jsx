@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import "./PickEmPage.css";
 import { CONFERENCES } from "../teamOptions";
 import { FEATURED_LINEUP, lineupSettings, lineupLabel } from "../gameLineup";
 import authFetch from "../authFetch";
 import LeaderboardEntry from "../components/LeaderboardEntry";
 import { pickLocked, savedPickSummary } from "../pickState";
-import { poolPickStatus } from "../poolPickStatus";
+import { poolPickStatus, shouldShowPickPrompt } from "../poolPickStatus";
 import useTimeZone from "../useTimeZone";
 import { Link } from "react-router-dom";
 
@@ -26,6 +26,10 @@ export default function PickEmPage() {
   const [myPoolsLoading, setMyPoolsLoading] = useState(true);
   const [myPoolsError, setMyPoolsError] = useState(null);
   const [myPoolsAttempt, setMyPoolsAttempt] = useState(0);
+  const [poolStatuses, setPoolStatuses] = useState({});
+  const setPoolStatus = useCallback((poolId, status) => {
+    setPoolStatuses(current => ({ ...current, [poolId]: status }));
+  }, []);
   const openPicks = selectedPool => { setPool(selectedPool); setView("picks"); };
   const joinPool = joinedPool => {
     setMyPools(current => [joinedPool, ...current.filter(item => item.id !== joinedPool.id)]);
@@ -42,6 +46,7 @@ export default function PickEmPage() {
         if (!Array.isArray(pools)) throw new Error("Couldn't load your pools. Please try again.");
         if (controller.signal.aborted) return;
         setMyPools(pools);
+        setPoolStatuses({});
         const selectedPool = pools.find(item => item.id === poolId);
         if (selectedPool) openPicks(selectedPool);
       })
@@ -56,23 +61,25 @@ export default function PickEmPage() {
     setMyPoolsAttempt(value => value + 1);
   }
 
+  const showPickPrompt = shouldShowPickPrompt(myPools.map(item => item.id), poolStatuses);
+
   return <div className="pickem-page">
     <p className="eyebrow">Compete with your people</p><h1>Pick 'Em <span>Pools</span></h1><p className="pickem-intro">Make your calls, track the field, and see who knows college football best.</p>
     {view === "home" && <>
-      <section className="pickem-next-step" aria-labelledby="pickem-next-step-title">
+      {showPickPrompt && <section className="pickem-next-step" aria-labelledby="pickem-next-step-title">
         <p className="eyebrow">Your next step</p>
         <h2 id="pickem-next-step-title">Make your picks</h2>
         <p>Choose one of your pools below. We’ll show exactly how many game picks you still need to submit.</p>
-      </section>
-      <div className="home-buttons"><button className="btn" onClick={() => setView("create")}>Create Pool</button></div>
-      <section className="my-pools-section"><div><p className="eyebrow">Your pools</p><h2>Pick a pool to get started</h2></div>{myPoolsLoading ? <p role="status">Loading your pools...</p> : myPoolsError ? <div><p className="error-message" role="alert">{myPoolsError}</p><button className="btn" onClick={retryMyPools}>Try again</button></div> : myPools.length === 0 ? <p className="my-pools-empty">You have not joined any pools yet. Browse the available pools below to get started.</p> : <div className="my-pools-list">{myPools.map(item => <PoolPickCard key={item.id} pool={item} onOpen={() => openPicks(item)} />)}</div>}</section>{!myPoolsLoading && !myPoolsError && <JoinPool joinedPoolIds={myPools.map(item => item.id)} onJoined={joinPool} />}</>}
+      </section>}
+      <section className="my-pools-section"><div><p className="eyebrow">Your pools</p><h2>Pick a pool to get started</h2></div>{myPoolsLoading ? <p role="status">Loading your pools...</p> : myPoolsError ? <div><p className="error-message" role="alert">{myPoolsError}</p><button className="btn" onClick={retryMyPools}>Try again</button></div> : myPools.length === 0 ? <p className="my-pools-empty">You have not joined any pools yet. Browse the available pools below or create your own.</p> : <div className="my-pools-list">{myPools.map(item => <PoolPickCard key={item.id} pool={item} onOpen={() => openPicks(item)} onStatus={setPoolStatus} />)}</div>}</section>
+      {!myPoolsLoading && !myPoolsError && <section className="discover-pools-section"><div className="discover-pools-heading"><div><p className="eyebrow">Find your next matchup</p><h2>Browse or create a pool</h2><p>Join an open pool below, or start one for your group.</p></div><button className="btn" onClick={() => setView("create")}>Create Pool</button></div><JoinPool joinedPoolIds={myPools.map(item => item.id)} onJoined={joinPool} /></section>}</>}
 
     {view === "create" && <CreatePool goBack={() => setView("home")} openPicks={joinPool} />}
     {view === "picks" && <WeeklyPicks pool={pool} goBack={() => setView("home")} />}
   </div>;
 }
 
-function PoolPickCard({ pool, onOpen }) {
+function PoolPickCard({ pool, onOpen, onStatus }) {
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
@@ -81,13 +88,21 @@ function PoolPickCard({ pool, onOpen }) {
       .then(readApiResponse)
       .then(body => {
         if (!Array.isArray(body?.games)) throw new Error("Missing games");
-        if (!controller.signal.aborted) setStatus(poolPickStatus(body.games, body.picks || {}));
+        if (!controller.signal.aborted) {
+          const nextStatus = poolPickStatus(body.games, body.picks || {});
+          setStatus(nextStatus);
+          onStatus(pool.id, nextStatus);
+        }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setStatus({ complete: false, message: "Open this pool to check this week’s picks", action: "Open pool" });
+        if (!controller.signal.aborted) {
+          const nextStatus = { complete: false, message: "Open this pool to check this week’s picks", action: "Open pool" };
+          setStatus(nextStatus);
+          onStatus(pool.id, nextStatus);
+        }
       });
     return () => controller.abort();
-  }, [pool.id]);
+  }, [onStatus, pool.id]);
 
   return <article className="my-pool-card">
     <div>

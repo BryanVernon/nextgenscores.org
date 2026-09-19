@@ -483,7 +483,14 @@ app.get("/api/team-summary", async (req, res) => {
         else if (teamScore < oppScore) losses++;
         played.push({ opponent, teamScore, oppScore, isHome, startDate: g.startDate });
       } else if (new Date(g.startDate) >= now) {
-        upcoming.push({ opponent, isHome, startDate: g.startDate, outlet: g.outlet ?? g.tv ?? g.network ?? null });
+        upcoming.push({
+          opponent,
+          isHome,
+          startDate: g.startDate,
+          outlet: g.outlet ?? g.tv ?? g.network ?? null,
+          teamLogo: isHome ? g.homeLogo ?? null : g.awayLogo ?? null,
+          opponentLogo: isHome ? g.awayLogo ?? null : g.homeLogo ?? null,
+        });
       }
     });
 
@@ -583,7 +590,7 @@ app.post("/api/jobs/friday-pick-reminders", requireJobToken, async (req, res) =>
   }
 });
 
-// GitHub Actions invokes this hourly; this gate preserves 7 AM/7 PM Central through DST.
+// GitHub Actions invokes this hourly; this Central-time gate runs daily 7 AM/7 PM and Saturday 11 AM–11 PM refreshes.
 app.post("/api/jobs/scoreboard-refresh", requireScoreboardJobToken, async (req, res) => {
   if (req.body?.force !== true && !isScoreboardRefreshTime(Date.now())) {
     return res.status(202).json({ message: "Scoreboard refresh skipped outside its Central-time window" });

@@ -2,8 +2,8 @@ name: Refresh Scoreboard
 
 on:
   schedule:
-    # GitHub Actions cron is UTC. Render allows only 7 AM and 7 PM America/Chicago,
-    # so this remains correct during both CST and CDT.
+    # GitHub Actions cron is UTC. Render permits daily 7 AM/7 PM refreshes and
+    # hourly Saturday refreshes from 11 AM through 11 PM America/Chicago, including DST.
     - cron: '17 * * * *'
   workflow_dispatch:
     inputs:

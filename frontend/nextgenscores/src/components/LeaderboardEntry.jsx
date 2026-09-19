@@ -1,6 +1,7 @@
 import "./LeaderboardEntry.css";
 import useTimeZone from "../useTimeZone";
 import { formatDateTime } from "../timeZone";
+import { chronologicalResults } from "../leaderboardResults";
 
 const resultLabels = {
   correct: "Correct",
@@ -12,12 +13,6 @@ const resultLabels = {
 };
 
 export default function LeaderboardEntry({ entry, week, scoringType = "straight" }) {
-  const results = entry.results;
-  const counts = (results || []).reduce((totals, game) => {
-    totals[game.result] = (totals[game.result] || 0) + 1;
-    return totals;
-  }, {});
-
   return <li className="participant-entry">
     <details className={entry.rank === 1 ? "participant-details participant-leader" : "participant-details"}>
       <summary className="participant-summary" aria-label={`View ${entry.name}'s Week ${week} picks: ${entry.correct} correct`}>
@@ -26,18 +21,28 @@ export default function LeaderboardEntry({ entry, week, scoringType = "straight"
         <span className="participant-score">{entry.correct} correct</span>
         <span className="participant-toggle"><span className="participant-show">View picks</span><span className="participant-hide">Hide picks</span><span aria-hidden="true">⌄</span></span>
       </summary>
-      <div className="participant-breakdown">
-        <h4>{entry.name}'s Week {week} picks</h4>
-        {!Array.isArray(results) ? <p>Pick details are unavailable right now. Please try again later.</p> : <>
-          <p className="participant-totals">{counts.correct || 0} correct · {counts.incorrect || 0} incorrect · {counts.pending || 0} pending · {counts.unpicked || 0} not picked{counts.tie ? ` · ${counts.tie} ${scoringType === "spread" ? "pushed" : "tied"}` : ""}{counts.hidden ? ` · ${counts.hidden} hidden until kickoff` : ""}</p>
-          {entry.picks === 0 && <p>No picks submitted for this week.</p>}
-          {results.length === 0 ? <p>No games available for this week.</p> : <ul className="participant-games">
-            {results.map(game => <PickResultCard game={game} key={game.gameId} scoringType={scoringType} />)}
-          </ul>}
-        </>}
-      </div>
+      <PickResults entry={entry} week={week} scoringType={scoringType} />
     </details>
   </li>;
+}
+
+export function PickResults({ entry, week, scoringType = "straight" }) {
+  const results = entry.results;
+  const counts = (results || []).reduce((totals, game) => {
+    totals[game.result] = (totals[game.result] || 0) + 1;
+    return totals;
+  }, {});
+
+  return <div className="participant-breakdown">
+    <h4>{entry.name}'s Week {week} picks</h4>
+    {!Array.isArray(results) ? <p>Pick details are unavailable right now. Please try again later.</p> : <>
+      <p className="participant-totals">{counts.correct || 0} correct · {counts.incorrect || 0} incorrect · {counts.pending || 0} pending · {counts.unpicked || 0} not picked{counts.tie ? ` · ${counts.tie} ${scoringType === "spread" ? "pushed" : "tied"}` : ""}{counts.hidden ? ` · ${counts.hidden} hidden until kickoff` : ""}</p>
+      {entry.picks === 0 && <p>No picks submitted for this week.</p>}
+      {results.length === 0 ? <p>No games available for this week.</p> : <ul className="participant-games">
+        {chronologicalResults(results).map(game => <PickResultCard game={game} key={game.gameId} scoringType={scoringType} />)}
+      </ul>}
+    </>}
+  </div>;
 }
 
 function PickResultCard({ game, scoringType }) {

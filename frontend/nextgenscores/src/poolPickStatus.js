@@ -18,3 +18,7 @@ export function poolPickStatus(games, picks = {}, now = Date.now()) {
   }
   return { complete: true, message: "All picks saved", action: "Review picks" };
 }
+
+export function shouldShowPickPrompt(poolIds, statuses) {
+  return poolIds.length > 0 && poolIds.some(id => !statuses[id]?.complete);
+}

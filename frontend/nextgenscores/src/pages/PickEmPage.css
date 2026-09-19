@@ -34,7 +34,12 @@
 .pool-pick-status.loading { color: var(--muted); font-weight: 600; }
 .make-picks-btn { flex: 0 0 auto; padding: 10px 12px; background: var(--accent); color: var(--accent-contrast); white-space: nowrap; }
 .make-picks-btn:hover { background: var(--ink); color: var(--ink-contrast); }
-.available-pools-section { margin-top: 34px; }
+.discover-pools-section { margin-top: 44px; padding-top: 26px; border-top: 1px solid var(--line); }
+.discover-pools-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.discover-pools-heading .eyebrow { margin-bottom: 5px; }
+.discover-pools-heading h2 { margin: 0; color: var(--ink); font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; letter-spacing: -0.04em; }
+.discover-pools-heading p:last-child { margin: 7px 0 0; color: var(--muted); line-height: 1.5; }
+.available-pools-section { margin-top: 22px; }
 .available-pools-status { margin: 8px 0 0; color: var(--muted); line-height: 1.6; }
 .btn { padding: 12px 16px; border: 0; border-radius: 7px; background: var(--ink); color: var(--ink-contrast); font: inherit; font-size: 0.87rem; font-weight: 800; cursor: pointer; transition: background 180ms ease, transform 180ms ease; }
 .btn:hover { background: var(--accent); color: var(--accent-contrast); transform: translateY(-1px); }
@@ -115,6 +120,8 @@
   .private-pool-form { grid-template-columns: 1fr; }
   .create-btn { grid-column: auto; }
   .my-pools-list { grid-template-columns: 1fr; }
+  .discover-pools-heading { align-items: flex-start; flex-direction: column; }
+  .discover-pools-heading .btn { width: 100%; }
 }
 
 @media (max-width: 480px) {

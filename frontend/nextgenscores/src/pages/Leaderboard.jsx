@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import "./Leaderboard.css";
 import authFetch from "../authFetch";
 import { lineupLabel } from "../gameLineup";
-import LeaderboardEntry from "../components/LeaderboardEntry";
+import LeaderboardEntry, { PickResults } from "../components/LeaderboardEntry";
 
 const API_BASE = import.meta.env.MODE === "development" ? `${window.location.protocol}//${window.location.hostname}:3002` : "https://nextgenscores-org.onrender.com";
 
@@ -92,9 +92,48 @@ function PoolLeaderboard({ pool }) {
       {standings.leaderboard.length === 0 ? <p>No results yet for this season.</p> : <ol className="participant-list">{standings.leaderboard.map(entry => standings.view === "season"
         ? <li className="participant-entry" key={entry.userId}><details className={`participant-details${entry.rank === 1 ? " participant-leader" : ""}`}>
           <summary className="participant-summary"><span className="participant-rank">#{entry.rank}</span><strong>{entry.name}</strong><span className="participant-score">{entry.correct} points</span><span className="participant-toggle">By week ⌄</span></summary>
-          <div className="participant-breakdown"><h4>{entry.name}'s season</h4><ul className="season-week-results">{entry.weeks.map(item => <li key={item.week}><button className="dashboard-link" onClick={() => selectWeek(item.week)}>Week {item.week}</button><span>{item.correct} correct · {item.picks} picks saved</span></li>)}</ul></div>
+          <div className="participant-breakdown"><h4>{entry.name}'s season</h4><ul className="season-week-results">{entry.weeks.map(item => <SeasonWeekResult key={item.week} poolId={pool.id} season={standings.season} entry={entry} item={item} scoringType={pool.scoringType} />)}</ul></div>
         </details></li>
         : <LeaderboardEntry key={entry.userId} entry={entry} week={standings.week} scoringType={pool.scoringType} />)}</ol>}
     </>}
   </section>;
+}
+
+function SeasonWeekResult({ poolId, season, entry, item, scoringType }) {
+  const [open, setOpen] = useState(false);
+  const [weekEntry, setWeekEntry] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+    setWeekEntry(null);
+    setError(null);
+    setLoading(false);
+  }, [poolId, season, item.week, entry.userId]);
+
+  async function toggle() {
+    if (open) return setOpen(false);
+    setOpen(true);
+    if (weekEntry || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const query = new URLSearchParams({ year: String(season), week: String(item.week) });
+      const response = await authFetch(`${API_BASE}/api/pools/${poolId}/leaderboard?${query}`);
+      const body = await response.json();
+      const found = body.leaderboard?.find(candidate => String(candidate.userId) === String(entry.userId));
+      if (!response.ok || !found) throw new Error(body.message || "Unable to load these picks.");
+      setWeekEntry(found);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return <li className={open ? "season-week-result is-open" : "season-week-result"}>
+    <button className="season-week-button" aria-expanded={open} onClick={toggle}><span>Week {item.week}</span><span>{item.correct} correct · {item.picks} picks saved</span></button>
+    {open && <div className="season-week-detail">{loading ? <p role="status">Loading Week {item.week} picks...</p> : error ? <p className="leaderboard-board-error" role="alert">{error}</p> : weekEntry && <PickResults entry={weekEntry} week={item.week} scoringType={scoringType} />}</div>}
+  </li>;
 }

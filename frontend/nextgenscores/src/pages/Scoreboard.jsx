@@ -165,7 +165,7 @@ export default function Scoreboard() {
   );
 }
 
-function GameCard({ game }) {
+export function GameCard({ game }) {
   const timeZone = useTimeZone();
   const status = gameStatus(game);
   const start = game.startDate ? new Date(game.startDate) : null;
