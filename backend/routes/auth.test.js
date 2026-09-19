@@ -44,3 +44,48 @@ test("public authentication never promotes an unverified allowlisted email; exis
   user.role = "admin";
   assert.equal((await (await post("/login", { email: user.email, password: "validpassword" })).json()).user.role, "admin");
 });
+
+test("preferences save normalized schedule conferences", async t => {
+  const previousSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = "local-auth-test-secret";
+  t.after(() => {
+    if (previousSecret == null) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = previousSecret;
+  });
+
+  const user = {
+    _id: "507f1f77bcf86cd799439011",
+    name: "Fan",
+    email: "fan@example.com",
+    role: "user",
+    favoriteTeams: ["Memphis"],
+    scheduleConferences: ["SEC", "American"],
+    theme: { mode: "default", team: null },
+  };
+  const update = t.mock.method(User, "findByIdAndUpdate", async (_id, changes) => ({ ...user, ...changes }));
+  const app = express();
+  app.use(express.json());
+  app.use("/auth", authRoutes);
+  const server = await new Promise(resolve => {
+    const instance = app.listen(0, "127.0.0.1", () => resolve(instance));
+  });
+  t.after(() => new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())));
+
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/auth/preferences`, {
+    method: "PUT",
+    headers: {
+      authorization: `Bearer ${jwt.sign({ sub: user._id }, process.env.JWT_SECRET)}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      favoriteTeams: ["Memphis"],
+      scheduleConferences: [" SEC ", "American", "SEC"],
+      theme: { mode: "default", team: null },
+      timeZone: "America/Chicago",
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(update.mock.calls[0].arguments[1].scheduleConferences, ["SEC", "American"]);
+  assert.deepEqual((await response.json()).user.scheduleConferences, ["SEC", "American"]);
+});

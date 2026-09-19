@@ -219,6 +219,11 @@ button.dashboard-link { min-height: 44px; padding: 8px 0; border: 0; background:
 .theme-option small { color: var(--muted); font-size: .82rem; }
 .theme-team-select { display: grid; gap: 7px; margin-top: 14px; color: var(--ink); font-size: .8rem; font-weight: 800; }
 .theme-team-select select { padding: 11px 12px; border: 1px solid var(--line); border-radius: 7px; background: #fbfcfa; color: var(--ink); font: inherit; }
+.schedule-conference-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 0; padding: 0; border: 0; }
+.schedule-conference-option { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font-size: .84rem; font-weight: 700; cursor: pointer; }
+.schedule-conference-option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.schedule-conference-option input { accent-color: var(--accent); }
+.schedule-conference-option:has(input:disabled) { cursor: not-allowed; opacity: .7; }
 .settings-save-row { display: flex; align-items: center; gap: 12px; }
 .settings-message { margin: 0; color: var(--accent); font-size: .86rem; font-weight: 700; }
 .settings-message.settings-error { color: #b42318; }
@@ -267,6 +272,7 @@ button.dashboard-link { min-height: 44px; padding: 8px 0; border: 0; background:
   .betting-card { flex-wrap: wrap; }
   .settings-section { padding: 18px 14px; }
   .settings-section-heading { gap: 10px; }
+  .schedule-conference-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .settings-icon { flex-basis: 34px; width: 34px; height: 34px; }
   .selected-teams { margin: 16px 0; }
   .weekly-leaderboard > ol > li:not(.participant-entry) { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; padding: 10px; }

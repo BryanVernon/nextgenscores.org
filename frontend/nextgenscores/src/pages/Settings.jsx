@@ -2,6 +2,7 @@ import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
 import authFetch from "../authFetch";
 import { COMMON_TIME_ZONES, DEFAULT_TIME_ZONE, formatDateTime } from "../timeZone";
+import { DEFAULT_SCHEDULE_CONFERENCES, effectiveScheduleConferences } from "../schedulePreferences";
 
 const API_BASE = import.meta.env.MODE === "development"
   ? `${window.location.protocol}//${window.location.hostname}:3002`
@@ -29,6 +30,8 @@ export default function Settings() {
   const [themeMode, setThemeMode] = useState(user?.theme?.mode || "default");
   const [themeTeam, setThemeTeam] = useState(user?.theme?.team || "");
   const [timeZone, setTimeZone] = useState(user?.timeZone || DEFAULT_TIME_ZONE);
+  const [scheduleConferences, setScheduleConferences] = useState(user?.scheduleConferences || DEFAULT_SCHEDULE_CONFERENCES);
+  const [schedulePreferencesReady, setSchedulePreferencesReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [saveError, setSaveError] = useState(false);
@@ -40,9 +43,17 @@ export default function Settings() {
     }).then(setTeamsByConference).catch(error => { setMessage(error.message); setSaveError(true); });
   }, []);
 
+  useEffect(() => {
+    if (schedulePreferencesReady || Object.keys(teamsByConference).length === 0) return;
+    const teams = Object.entries(teamsByConference).flatMap(([conferenceName, teamsInConference]) => teamsInConference.map(name => ({ name, conference: conferenceName })));
+    setScheduleConferences(effectiveScheduleConferences(scheduleConferences, selected, teams));
+    setSchedulePreferencesReady(true);
+  }, [scheduleConferences, schedulePreferencesReady, selected, teamsByConference]);
+
   function addTeam() {
     if (!teamChoice || selected.includes(teamChoice)) return;
     setSelected(current => [...current, teamChoice]);
+    setScheduleConferences(current => current.includes(conference) ? current : [...current, conference]);
     setTeamChoice("");
   }
 
@@ -54,6 +65,12 @@ export default function Settings() {
     }
   }
 
+  function toggleScheduleConference(conferenceName) {
+    setScheduleConferences(current => current.includes(conferenceName)
+      ? current.length === 1 ? current : current.filter(item => item !== conferenceName)
+      : [...current, conferenceName]);
+  }
+
   async function handleSave() {
     setSaving(true);
     setMessage(null);
@@ -62,7 +79,12 @@ export default function Settings() {
       const res = await authFetch(`${API_BASE}/api/auth/preferences`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ favoriteTeams: selected, theme: { mode: themeMode, team: themeMode === "team" ? themeTeam : null }, timeZone }),
+        body: JSON.stringify({
+          favoriteTeams: selected,
+          scheduleConferences,
+          theme: { mode: themeMode, team: themeMode === "team" ? themeTeam : null },
+          timeZone,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Something went wrong. Try again.");
@@ -92,6 +114,18 @@ export default function Settings() {
         <button className="btn" type="button" onClick={addTeam} disabled={!teamChoice}>Add</button>
       </div>
       {selected.length > 0 ? <ul className="selected-teams">{selected.map(team => <li key={team}><span>{team}</span><button type="button" onClick={() => removeTeam(team)} aria-label={`Remove ${team}`}>×</button></li>)}</ul> : <p className="teams-empty">No favorites selected yet.</p>}
+    </section>
+
+    <section className="settings-section appearance-section">
+      <div className="settings-section-heading"><span className="settings-icon" aria-hidden="true">☷</span><div><h2>Schedule conferences</h2><p>When the schedule is set to All conferences, show only these conferences. Your favorite teams’ conferences are always included.</p></div></div>
+      <fieldset className="schedule-conference-options">
+        <legend className="sr-only">Conferences shown in the All schedule view</legend>
+        {conferenceOptions.map(conferenceName => <label key={conferenceName} className="schedule-conference-option">
+          <input type="checkbox" checked={scheduleConferences.includes(conferenceName)} onChange={() => toggleScheduleConference(conferenceName)} disabled={scheduleConferences.length === 1 && scheduleConferences.includes(conferenceName)} />
+          <span>{conferenceName}</span>
+        </label>)}
+      </fieldset>
+      <p className="settings-time-preview">ACC, Big Ten, Big 12, Pac-12, and SEC are selected by default.</p>
     </section>
 
     <section className="settings-section appearance-section">

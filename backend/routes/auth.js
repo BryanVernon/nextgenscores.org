@@ -2,7 +2,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import User from "../models/User.js";
+import User, { DEFAULT_SCHEDULE_CONFERENCES } from "../models/User.js";
 import requireAuth from "../middleware/requireAuth.js";
 import { sendPasswordResetEmail } from "../utils/mailer.js";
 import { isValidTimeZone, userTimeZone } from "../utils/timeZone.js";
@@ -15,6 +15,7 @@ function safeUser(user) {
     email: user.email,
     role: user.role,
     favoriteTeams: user.favoriteTeams,
+    scheduleConferences: user.scheduleConferences?.length ? user.scheduleConferences : DEFAULT_SCHEDULE_CONFERENCES,
     timeZone: userTimeZone(user.timeZone),
     theme: user.theme || { mode: "default", team: null },
   };
@@ -204,12 +205,15 @@ router.put("/favorite-teams", requireAuth, async (req, res) => {
 
 router.put("/preferences", requireAuth, async (req, res) => {
   try {
-    const { favoriteTeams, theme, timeZone } = req.body;
+    const { favoriteTeams, theme, timeZone, scheduleConferences } = req.body;
     const mode = theme?.mode;
     const team = theme?.team || null;
 
     if (!Array.isArray(favoriteTeams)) {
       return res.status(400).json({ message: "favoriteTeams must be an array" });
+    }
+    if (!Array.isArray(scheduleConferences) || scheduleConferences.length === 0 || scheduleConferences.some(item => typeof item !== "string" || !item.trim() || item.length > 80)) {
+      return res.status(400).json({ message: "Choose at least one valid schedule conference" });
     }
     if (timeZone !== undefined && !isValidTimeZone(timeZone)) {
       return res.status(400).json({ message: "Choose a valid timezone" });
@@ -221,9 +225,10 @@ router.put("/preferences", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "Choose one of your favorite teams for the team theme" });
     }
 
+    const normalizedScheduleConferences = [...new Set(scheduleConferences.map(item => item.trim()))];
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { favoriteTeams, theme: { mode, team: mode === "team" ? team : null }, ...(timeZone !== undefined ? { timeZone } : {}) },
+      { favoriteTeams, scheduleConferences: normalizedScheduleConferences, theme: { mode, team: mode === "team" ? team : null }, ...(timeZone !== undefined ? { timeZone } : {}) },
       { new: true }
     );
     if (!user) return res.status(404).json({ message: "User not found" });

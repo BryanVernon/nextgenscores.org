@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import { DEFAULT_TIME_ZONE, isValidTimeZone } from "../utils/timeZone.js";
 
+export const DEFAULT_SCHEDULE_CONFERENCES = ["ACC", "Big Ten", "Big 12", "Pac-12", "SEC"];
+
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   firstName: { type: String, trim: true },
@@ -11,6 +13,7 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ["user", "admin"], default: "user" },
   favoriteTeams: { type: [String], default: [] },
+  scheduleConferences: { type: [String], default: DEFAULT_SCHEDULE_CONFERENCES },
   timeZone: { type: String, default: DEFAULT_TIME_ZONE, validate: isValidTimeZone },
   theme: {
     mode: { type: String, enum: ["default", "team"], default: "default" },

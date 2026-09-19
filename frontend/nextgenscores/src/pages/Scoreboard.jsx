@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../App.css";
 import { CONFERENCES, getTeamGroups } from "../teamOptions";
 import { gameStatus, groupGamesByDate, latestUpdate, spreadLabel } from "../scheduleUtils";
 import { defaultScheduleConference } from "../scheduleFilters";
+import { effectiveScheduleConferences, filterScheduleGames } from "../schedulePreferences";
+import { AuthContext } from "../context/AuthContext";
 import useTimeZone from "../useTimeZone";
 
 const API_URL = import.meta.env.MODE === "development"
@@ -11,6 +13,7 @@ const API_URL = import.meta.env.MODE === "development"
   : "https://nextgenscores-org.onrender.com/api/schedule";
 
 export default function Scoreboard() {
+  const { user } = useContext(AuthContext);
   const displayTimeZone = useTimeZone();
   const [params, setParams] = useSearchParams();
   const requestedWeek = params.get("week");
@@ -69,8 +72,10 @@ export default function Scoreboard() {
   }, [week, conference, team, requestKey, refresh]);
 
   const teamGroups = useMemo(() => getTeamGroups(data.teams), [data.teams]);
+  const selectedConferences = effectiveScheduleConferences(user?.scheduleConferences, user?.favoriteTeams, data.teams);
   const hasMatchingData = loadedKey === requestKey;
-  const games = hasMatchingData ? data.games : [];
+  const loadedGames = hasMatchingData ? data.games : [];
+  const games = conference === "All" && !team ? filterScheduleGames(loadedGames, selectedConferences) : loadedGames;
   const groups = groupGamesByDate(games, displayTimeZone);
   const updatedAt = latestUpdate(games);
   const weeks = data.weeks.map(item => item.week);
@@ -106,7 +111,7 @@ export default function Scoreboard() {
       <section className="filter-container" aria-label="Schedule filters">
         <div className="filter-heading">
           <span className="filter-kicker">Browse the slate</span>
-          <span className="filter-current">{team || (conference === "All" ? "All conferences" : conference)}</span>
+          <span className="filter-current">{team || (conference === "All" ? `${selectedConferences.length} selected conferences` : conference)}</span>
         </div>
         <div className="filter">
           <label htmlFor="week-filter">Week</label>
@@ -117,7 +122,7 @@ export default function Scoreboard() {
           </select>
           <label htmlFor="conference-filter">Conference</label>
           <select id="conference-filter" value={conference} onChange={event => changeFilters({ conference: event.target.value, team: "" })}>
-            <option value="All">All conferences</option>
+            <option value="All">My selected conferences</option>
             {CONFERENCES.map(value => <option key={value} value={value}>{value}</option>)}
           </select>
           <label htmlFor="team-filter">Team</label>
@@ -151,8 +156,8 @@ export default function Scoreboard() {
       {loading && !hasMatchingData && <div className="schedule-skeleton" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <div key={index} />)}</div>}
       {!loading && !error && hasMatchingData && games.length === 0 && <div className="schedule-message schedule-empty">
         <h2>No games in this selection</h2>
-        <p>Try another week or see every conference.</p>
-        <button type="button" className="schedule-button" onClick={() => changeFilters({ conference: "All", team: "" })}>Show all teams</button>
+        <p>Try another week, choose a conference, or update your selected conferences in Settings.</p>
+        <button type="button" className="schedule-button" onClick={() => changeFilters({ conference: "All", team: "" })}>Show my selected conferences</button>
         {week !== "current" && <button type="button" className="schedule-button" onClick={() => changeFilters({ week: "current" })}>Go to current week</button>}
       </div>}
       <div className="schedule-days" aria-busy={loading}>

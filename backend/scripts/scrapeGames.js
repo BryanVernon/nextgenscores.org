@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import fetch from "node-fetch";
+import { scoreboardUpdates } from "../utils/scoreboardData.js";
 
 dotenv.config();
 
@@ -257,6 +258,23 @@ async function run() {
         return documents.length;
       },
     });
+
+    if (args.has("--live-scoreboard")) {
+      const scoreboard = await getJson("/scoreboard");
+      if (!Array.isArray(scoreboard)) throw new Error("CFBD /scoreboard returned an invalid response");
+      const updates = scoreboardUpdates(scoreboard);
+      const result = updates.length ? await games.bulkWrite(
+        updates.map(update => ({
+          updateOne: {
+            filter: { id: update.id },
+            update: { $set: update },
+            upsert: false,
+          },
+        })),
+        { ordered: false }
+      ) : { matchedCount: 0 };
+      console.log(`Synced live scoreboard data for ${result.matchedCount} scheduled games.`);
+    }
   } finally {
     await mongoose.disconnect();
   }

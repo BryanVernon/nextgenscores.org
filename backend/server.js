@@ -69,6 +69,22 @@ const gameSchema = new mongoose.Schema({
   overUnder: Number,
   oddsSource: String,
   outlet: String,
+  liveStatus: String,
+  period: Number,
+  clock: String,
+  situation: String,
+  possession: String,
+  lastPlay: String,
+  homeWinProbability: Number,
+  awayWinProbability: Number,
+  homeLineScores: [Number],
+  awayLineScores: [Number],
+  weather: {
+    temperature: Number,
+    windSpeed: Number,
+    windDirection: Number,
+    description: String,
+  },
 });
 gameSchema.index({ season: 1, week: 1, startDate: 1 });
 
