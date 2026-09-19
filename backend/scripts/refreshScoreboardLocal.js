@@ -28,7 +28,7 @@ const seasons = now.getMonth() < 2 ? [year, year - 1] : [year];
 let failed = false;
 log(`[${now.toISOString()}] Starting scheduled scoreboard refresh`);
 for (const season of seasons) {
-  const result = spawnSync(process.execPath, ["scripts/scrapeGames.js", "--live-scoreboard"], {
+  const result = spawnSync(process.execPath, ["scripts/scrapeGames.js"], {
     cwd: backend,
     env: {
       ...process.env,
