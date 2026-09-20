@@ -491,6 +491,8 @@ app.get("/api/team-summary", async (req, res) => {
           isHome,
           startDate: g.startDate,
           outlet: g.outlet ?? g.tv ?? g.network ?? null,
+          spread: g.spread ?? null,
+          overUnder: g.overUnder ?? null,
           teamLogo: isHome ? g.homeLogo ?? null : g.awayLogo ?? null,
           opponentLogo: isHome ? g.awayLogo ?? null : g.homeLogo ?? null,
         });

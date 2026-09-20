@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isGameLocked, laterPeriod, isEligible, validatePickChanges, firstUnstartedPeriod } from "./poolTiming.js";
+import { isGameLocked, laterPeriod, isEligible, validatePickChanges, firstUnstartedPeriod, shouldAdvancePickPeriod } from "./poolTiming.js";
 
 const now = Date.parse("2026-09-05T18:00:00Z");
 const started = { id: 1, startDate: "2026-09-05T18:00:00Z" };
@@ -47,4 +47,9 @@ test("only selected lineup games determine whether a pool can start this week", 
 test("no future lineup returns no period, rather than inventing a week", async () => {
   assert.equal(await firstUnstartedPeriod([[{ ...started, season: 2026, week: 15 }]], async games => games, () => now), null);
   assert.equal(await firstUnstartedPeriod([[{ ...upcoming, season: 2026, week: 1 }]], async () => [], () => now), null);
+});
+test("completed current lineups advance pick entry to the next week", () => {
+  assert.equal(shouldAdvancePickPeriod([{ ...started }, { ...started, id: 3 }], now), true);
+  assert.equal(shouldAdvancePickPeriod([{ ...started }, { ...upcoming }], now), false);
+  assert.equal(shouldAdvancePickPeriod([], now), false);
 });

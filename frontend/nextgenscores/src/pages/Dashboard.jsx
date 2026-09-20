@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import authFetch from "../authFetch";
 import { lineupLabel } from "../gameLineup";
 import { featuredGames } from "../featuredGames";
-import { favoriteTeamNextGame } from "../dashboardGames";
+import { favoriteGameDay, favoriteTeamNextGame } from "../dashboardGames";
+import useTimeZone from "../useTimeZone";
 import { GameCard } from "./Scoreboard";
 
 const API_BASE = import.meta.env.MODE === "development"
@@ -72,6 +73,7 @@ export default function Dashboard() {
 }
 
 function TeamPanel({ team }) {
+  const timeZone = useTimeZone();
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
   const [attempt, setAttempt] = useState(0);
@@ -99,12 +101,13 @@ function TeamPanel({ team }) {
 
   const { record, lastGame, nextGame } = summary;
   const game = favoriteTeamNextGame(team, nextGame);
+  const gameDay = game ? favoriteGameDay(game.startDate, timeZone) : null;
 
   return <div className="dashboard-panel favorite-panel">
     <span className="panel-label">{team}</span>
     <strong>{record.wins}-{record.losses}</strong>
     {lastGame && <p>Last game: {lastGame.isHome ? "vs" : "at"} {lastGame.opponent}, {lastGame.teamScore}-{lastGame.oppScore}</p>}
-    {game ? <div className="dashboard-team-game"><span className="dashboard-game-label">Next game</span><div className="game-card"><GameCard game={game} /></div></div> : <p className="dashboard-no-next-game">No upcoming game is scheduled yet.</p>}
+    {game ? <div className="dashboard-team-game"><span className="dashboard-game-label">Next game{gameDay ? ` · ${gameDay}` : ""}</span><div className="game-card"><GameCard game={game} /></div></div> : <p className="dashboard-no-next-game">No upcoming game is scheduled yet.</p>}
   </div>;
 }
 

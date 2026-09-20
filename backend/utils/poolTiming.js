@@ -2,6 +2,10 @@ export function isGameLocked(game, now = Date.now()) {
   const kickoff = game.startDate ? new Date(game.startDate).getTime() : NaN;
   return !Number.isFinite(kickoff) || kickoff <= now || game.homePoints != null || game.awayPoints != null;
 }
+
+export function shouldAdvancePickPeriod(lineup, now = Date.now()) {
+  return lineup.length > 0 && lineup.every(game => isGameLocked(game, now));
+}
 export function laterPeriod(left, right) {
   if (!right || right.season == null || right.week == null) return left;
   if (!left || left.week == null || left.season == null) return right;

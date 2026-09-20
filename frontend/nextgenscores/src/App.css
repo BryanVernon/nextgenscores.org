@@ -166,6 +166,7 @@ button.dashboard-link { min-height: 44px; padding: 8px 0; border: 0; background:
 .dashboard-team-game .game-card { box-shadow: none; }
 .dashboard-no-next-game { margin-top: 16px !important; }
 .dashboard-featured-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dashboard-featured-section .betting-card { color: var(--ink); }
 .dashboard-featured-status { padding: 28px 20px; border: 1px dashed #b9c8c2; border-radius: 12px; color: var(--muted); text-align: center; }
 .dashboard-featured-status p { margin: 0 0 10px; }
 .dashboard-picks-section, .dashboard-teams-section, .dashboard-featured-section { margin-top: 34px; }
@@ -181,6 +182,7 @@ button.dashboard-link { min-height: 44px; padding: 8px 0; border: 0; background:
 .dashboard-pools-intro { margin: -2px 0 12px !important; }
 .dashboard-actions { display: flex; align-items: center; gap: 20px; margin-top: 26px; }
 .dashboard-link { color: var(--ink); font-size: 0.88rem; font-weight: 800; text-decoration: none; }
+.dashboard-link:hover, .dashboard-link:focus-visible { color: var(--accent); }
 .dashboard-link span { color: var(--accent); font-size: 1.2rem; }
 .quiet-button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; cursor: pointer; }
 .quiet-button:hover { color: var(--ink); }
@@ -224,6 +226,9 @@ button.dashboard-link { min-height: 44px; padding: 8px 0; border: 0; background:
 .schedule-conference-option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 .schedule-conference-option input { accent-color: var(--accent); }
 .schedule-conference-option:has(input:disabled) { cursor: not-allowed; opacity: .7; }
+.schedule-conference-toggle { margin-top: 12px; padding: 0; border: 0; background: transparent; color: var(--accent); font: inherit; font-size: .86rem; font-weight: 800; cursor: pointer; }
+.schedule-conference-toggle:hover, .schedule-conference-toggle:focus-visible { opacity: .8; text-decoration: underline; }
+.schedule-conference-toggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; border-radius: 3px; }
 .settings-save-row { display: flex; align-items: center; gap: 12px; }
 .settings-message { margin: 0; color: var(--accent); font-size: .86rem; font-weight: 700; }
 .settings-message.settings-error { color: #b42318; }

@@ -11,7 +11,7 @@ import { historicalLineup, weeklyStandings, seasonStandings } from "../utils/poo
 import { footballSeason } from "../utils/timeZone.js";
 
 import { selectFeaturedMatchups } from "../utils/featuredMatchups.js";
-import { isGameLocked, laterPeriod, memberStart, isEligible, validatePickChanges, firstUnstartedPeriod } from "../utils/poolTiming.js";
+import { isGameLocked, laterPeriod, memberStart, isEligible, validatePickChanges, firstUnstartedPeriod, shouldAdvancePickPeriod } from "../utils/poolTiming.js";
 
 const router = express.Router();
 const MAX_POOLS_PER_USER = 10;
@@ -84,6 +84,15 @@ async function openingPeriod(pool, minimum) {
   });
 }
 
+async function pickEntryPeriod(pool, requestedSeason, userId) {
+  const current = await currentPeriod(pool, requestedSeason, userId);
+  if (current.week == null) return current;
+  const games = await getGameModel().find(current).sort({ startDate: 1 }).lean();
+  const lineup = await selectGamesForPool({ pool, games, ...current });
+  if (!shouldAdvancePickPeriod(lineup)) return current;
+  return (await openingPeriod(pool, current)) ?? current;
+}
+
 function shapePool(pool) {
   return {
     id: pool._id,
@@ -149,7 +158,7 @@ router.get("/:id/picks/current", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Join this pool to view its picks" });
     }
 
-    const { season, week } = await currentPeriod(pool, req.query.year, req.userId);
+    const { season, week } = await pickEntryPeriod(pool, req.query.year, req.userId);
     if (week == null) return res.status(409).json({ message: "No scheduled week is available yet." });
     const games = await getGameModel().find({ season, week }).sort({ startDate: 1 }).lean();
     const weekGames = await selectGamesForPool({ pool, games, season, week });
@@ -189,7 +198,7 @@ router.put("/:id/picks/current", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Join this pool to save picks" });
     }
 
-    const { season, week } = await currentPeriod(pool, req.query.year, req.userId);
+    const { season, week } = await pickEntryPeriod(pool, req.query.year, req.userId);
     if (Number(req.body.season) !== season || Number(req.body.week) !== week) {
       return res.status(409).json({ message: "The active week has changed. Refresh before saving your picks." });
     }

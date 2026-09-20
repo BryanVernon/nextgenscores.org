@@ -18,3 +18,7 @@ export function filterScheduleGames(games, conferences) {
   const selected = new Set(conferences);
   return games.filter(game => selected.has(game.homeConference) || selected.has(game.awayConference));
 }
+
+export function visibleScheduleConferences(conferences, expanded, limit = 9) {
+  return expanded ? conferences : conferences.slice(0, limit);
+}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SCHEDULE_CONFERENCES, effectiveScheduleConferences, filterScheduleGames } from "../src/schedulePreferences.js";
+import { DEFAULT_SCHEDULE_CONFERENCES, effectiveScheduleConferences, filterScheduleGames, visibleScheduleConferences } from "../src/schedulePreferences.js";
 
 const teams = [
   { name: "Oregon State", conference: "Pac-12" },
@@ -24,4 +24,10 @@ test("all-conference schedule filtering retains matchups involving a selected co
   ];
 
   assert.deepEqual(filterScheduleGames(games, ["SEC", "American"]).map(game => game.id), [1, 2]);
+});
+
+test("conference options show the first nine until expanded", () => {
+  const conferences = Array.from({ length: 12 }, (_, index) => `Conference ${index + 1}`);
+  assert.deepEqual(visibleScheduleConferences(conferences, false), conferences.slice(0, 9));
+  assert.deepEqual(visibleScheduleConferences(conferences, true), conferences);
 });

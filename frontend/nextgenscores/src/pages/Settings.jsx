@@ -2,7 +2,7 @@ import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
 import authFetch from "../authFetch";
 import { COMMON_TIME_ZONES, DEFAULT_TIME_ZONE, formatDateTime } from "../timeZone";
-import { DEFAULT_SCHEDULE_CONFERENCES, effectiveScheduleConferences } from "../schedulePreferences";
+import { DEFAULT_SCHEDULE_CONFERENCES, effectiveScheduleConferences, visibleScheduleConferences } from "../schedulePreferences";
 
 const API_BASE = import.meta.env.MODE === "development"
   ? `${window.location.protocol}//${window.location.hostname}:3002`
@@ -32,6 +32,7 @@ export default function Settings() {
   const [timeZone, setTimeZone] = useState(user?.timeZone || DEFAULT_TIME_ZONE);
   const [scheduleConferences, setScheduleConferences] = useState(user?.scheduleConferences || DEFAULT_SCHEDULE_CONFERENCES);
   const [schedulePreferencesReady, setSchedulePreferencesReady] = useState(false);
+  const [showAllScheduleConferences, setShowAllScheduleConferences] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [saveError, setSaveError] = useState(false);
@@ -99,6 +100,7 @@ export default function Settings() {
   }
 
   const conferenceOptions = sortConferences(Object.keys(teamsByConference));
+  const visibleConferenceOptions = visibleScheduleConferences(conferenceOptions, showAllScheduleConferences);
   const teamOptions = conference ? teamsByConference[conference] || [] : [];
   const otherTimeZones = (Intl.supportedValuesOf?.("timeZone") || []).filter(zone => !COMMON_TIME_ZONES.some(([value]) => value === zone));
 
@@ -120,11 +122,14 @@ export default function Settings() {
       <div className="settings-section-heading"><span className="settings-icon" aria-hidden="true">☷</span><div><h2>Schedule conferences</h2><p>When the schedule is set to All conferences, show only these conferences. Your favorite teams’ conferences are always included.</p></div></div>
       <fieldset className="schedule-conference-options">
         <legend className="sr-only">Conferences shown in the All schedule view</legend>
-        {conferenceOptions.map(conferenceName => <label key={conferenceName} className="schedule-conference-option">
+        {visibleConferenceOptions.map(conferenceName => <label key={conferenceName} className="schedule-conference-option">
           <input type="checkbox" checked={scheduleConferences.includes(conferenceName)} onChange={() => toggleScheduleConference(conferenceName)} disabled={scheduleConferences.length === 1 && scheduleConferences.includes(conferenceName)} />
           <span>{conferenceName}</span>
         </label>)}
       </fieldset>
+      {conferenceOptions.length > 9 && <button className="schedule-conference-toggle" type="button" onClick={() => setShowAllScheduleConferences(current => !current)} aria-expanded={showAllScheduleConferences}>
+        {showAllScheduleConferences ? "Show fewer conferences" : `Show all ${conferenceOptions.length} conferences`}
+      </button>}
       <p className="settings-time-preview">ACC, Big Ten, Big 12, Pac-12, and SEC are selected by default.</p>
     </section>
 
