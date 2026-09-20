@@ -1,7 +1,8 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import fetch from "node-fetch";
-import { scoreboardUpdates } from "../utils/scoreboardData.js";
+import { ncaaScoreboardUpdates } from "../utils/ncaaScoreboardData.js";
+import { NCAA_SCOREBOARD_URL } from "../utils/ncaaScoreboardSource.js";
 
 dotenv.config();
 
@@ -46,6 +47,12 @@ async function getJson(path, params = {}) {
     headers,
   });
   if (!response.ok) throw new Error(`CFBD ${path} request failed: ${response.status}`);
+  return response.json();
+}
+
+async function getNcaaScoreboard() {
+  const response = await fetch(NCAA_SCOREBOARD_URL, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`NCAA scoreboard request failed: ${response.status}`);
   return response.json();
 }
 
@@ -260,9 +267,11 @@ async function run() {
     });
 
     if (args.has("--live-scoreboard")) {
-      const scoreboard = await getJson("/scoreboard");
-      if (!Array.isArray(scoreboard)) throw new Error("CFBD /scoreboard returned an invalid response");
-      const updates = scoreboardUpdates(scoreboard);
+      const [scoreboard, scheduledGames] = await Promise.all([
+        getNcaaScoreboard(),
+        games.find({ season: year }, { projection: { id: 1, homeTeam: 1, awayTeam: 1, startDate: 1 } }).toArray(),
+      ]);
+      const updates = ncaaScoreboardUpdates(scoreboard, scheduledGames);
       const result = updates.length ? await games.bulkWrite(
         updates.map(update => ({
           updateOne: {
@@ -273,7 +282,7 @@ async function run() {
         })),
         { ordered: false }
       ) : { matchedCount: 0 };
-      console.log(`Synced live scoreboard data for ${result.matchedCount} scheduled games.`);
+      console.log(`Synced NCAA live scoreboard data for ${result.matchedCount} scheduled games.`);
     }
   } finally {
     await mongoose.disconnect();
