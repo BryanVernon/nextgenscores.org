@@ -2,9 +2,9 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import "../App.css";
 import { CONFERENCES, getTeamGroups } from "../teamOptions";
-import { gameStatus, groupGamesByDate, latestUpdate, spreadLabel } from "../scheduleUtils";
+import { gameDateLabel, gameStatus, groupGamesByDate, latestUpdate, spreadLabel } from "../scheduleUtils";
 import { defaultScheduleConference } from "../scheduleFilters";
-import { effectiveScheduleConferences, filterScheduleGames } from "../schedulePreferences";
+import { effectiveScheduleConferences, scheduleConferenceGames } from "../schedulePreferences";
 import { AuthContext } from "../context/AuthContext";
 import useTimeZone from "../useTimeZone";
 
@@ -41,7 +41,7 @@ export default function Scoreboard() {
       setError("");
       timeout = setTimeout(() => controller.abort(), 30000);
       try {
-        const query = new URLSearchParams({ conference });
+        const query = new URLSearchParams({ conference: conference === "Featured games" ? "All" : conference });
         if (week !== "current") query.set("week", week);
         if (team) query.set("team", team);
         const response = await fetch(`${API_URL}?${query}`, { signal: controller.signal, cache: "no-cache" });
@@ -75,7 +75,7 @@ export default function Scoreboard() {
   const selectedConferences = effectiveScheduleConferences(user?.scheduleConferences, user?.favoriteTeams, data.teams);
   const hasMatchingData = loadedKey === requestKey;
   const loadedGames = hasMatchingData ? data.games : [];
-  const games = conference === "All" && !team ? filterScheduleGames(loadedGames, selectedConferences) : loadedGames;
+  const games = team ? loadedGames : scheduleConferenceGames(loadedGames, conference, selectedConferences);
   const groups = groupGamesByDate(games, displayTimeZone);
   const updatedAt = latestUpdate(games);
   const weeks = data.weeks.map(item => item.week);
@@ -163,17 +163,18 @@ export default function Scoreboard() {
       <div className="schedule-days" aria-busy={loading}>
         {groups.map(group => <section key={group.label} className="schedule-day" aria-label={group.label}>
           <h2 className="schedule-date-heading">{group.label}<span>{group.games.length} {group.games.length === 1 ? "game" : "games"}</span></h2>
-          <ul className="games-grid">{group.games.map(game => <li key={game._id || game.id} className="game-card"><GameCard game={game} /></li>)}</ul>
+          <ul className="games-grid">{group.games.map(game => <li key={game._id || game.id} className="game-card"><GameCard game={game} showDate /></li>)}</ul>
         </section>)}
       </div>
     </div>
   );
 }
 
-export function GameCard({ game }) {
+export function GameCard({ game, showDate = false }) {
   const timeZone = useTimeZone();
   const status = gameStatus(game);
   const start = game.startDate ? new Date(game.startDate) : null;
+  const dateLabel = showDate ? gameDateLabel(game.startDate, timeZone) : null;
   const time = !game.startTimeTBD && start && Number.isFinite(start.getTime())
     ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone, timeZoneName: "short" }) : "Time TBD";
   const spread = spreadLabel(game);
@@ -181,7 +182,7 @@ export function GameCard({ game }) {
   const isFinal = game.completed === true && hasScores;
 
   return <article className="game-card-content" aria-label={`${game.awayTeam} at ${game.homeTeam}`}>
-    <div className="game-meta"><span className={`game-status status-${status.kind}`}>{status.label}</span><span className="meta-time">{time}</span></div>
+    <div className="game-meta"><span className={`game-status status-${status.kind}`}>{status.label}</span>{dateLabel && <span className="meta-date">{dateLabel}</span>}<span className="meta-time">{time}</span></div>
     <div className="teams-fullwidth">
       <TeamBlock name={game.awayTeam} score={game.awayPoints} logo={game.awayLogo} rank={game.awayApRank} winner={isFinal && game.awayPoints > game.homePoints} />
       <TeamBlock name={game.homeTeam} score={game.homePoints} logo={game.homeLogo} rank={game.homeApRank} winner={isFinal && game.homePoints > game.awayPoints} />

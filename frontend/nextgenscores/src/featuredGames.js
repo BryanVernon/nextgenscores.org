@@ -1,6 +1,33 @@
 const PREFERRED_CONFERENCES = new Set(["SEC", "Big Ten", "ACC", "Big 12", "Pac-12"]);
 const COMPETITIVE_SPREAD_LIMIT = 11;
 
+function localDateKey(value, timeZone) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function addDays(dateKey, days) {
+  const date = new Date(`${dateKey}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+export function featuredWeekIndex(weeks, now = new Date(), timeZone) {
+  const today = localDateKey(now, timeZone);
+  if (!today || !weeks.length) return -1;
+  const sunday = addDays(today, -new Date(`${today}T12:00:00Z`).getUTCDay());
+  const nextSunday = addDays(sunday, 7);
+  const currentIndex = weeks.findIndex(item => {
+    const start = localDateKey(item.startDate, timeZone);
+    return start && start >= sunday && start < nextSunday;
+  });
+  if (currentIndex !== -1) return currentIndex;
+  return weeks.findIndex(item => (localDateKey(item.startDate, timeZone) || "") >= sunday);
+}
+
 function profile(game) {
   let preferredTeams = 0;
   let rankedTeams = 0;

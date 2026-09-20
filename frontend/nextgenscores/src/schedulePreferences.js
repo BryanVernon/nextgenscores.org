@@ -1,3 +1,5 @@
+import { featuredGames } from "./featuredGames.js";
+
 export const DEFAULT_SCHEDULE_CONFERENCES = ["ACC", "Big Ten", "Big 12", "Pac-12", "SEC"];
 
 function unique(values) {
@@ -17,6 +19,11 @@ export function effectiveScheduleConferences(savedConferences, favoriteTeams, te
 export function filterScheduleGames(games, conferences) {
   const selected = new Set(conferences);
   return games.filter(game => selected.has(game.homeConference) || selected.has(game.awayConference));
+}
+
+export function scheduleConferenceGames(games, conference, selectedConferences) {
+  if (conference === "Featured games") return featuredGames(games);
+  return conference === "All" ? filterScheduleGames(games, selectedConferences) : games;
 }
 
 export function visibleScheduleConferences(conferences, expanded, limit = 9) {

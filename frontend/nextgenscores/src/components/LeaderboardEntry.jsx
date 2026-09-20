@@ -1,7 +1,7 @@
 import "./LeaderboardEntry.css";
 import useTimeZone from "../useTimeZone";
 import { formatDateTime } from "../timeZone";
-import { chronologicalResults } from "../leaderboardResults";
+import { chronologicalResults, weeklyCorrectness } from "../leaderboardResults";
 
 const resultLabels = {
   correct: "Correct",
@@ -13,12 +13,13 @@ const resultLabels = {
 };
 
 export default function LeaderboardEntry({ entry, week, scoringType = "straight" }) {
+  const correctness = weeklyCorrectness(entry.correct, Array.isArray(entry.results) ? entry.results.length : 0);
   return <li className="participant-entry">
     <details className={entry.rank === 1 ? "participant-details participant-leader" : "participant-details"}>
-      <summary className="participant-summary" aria-label={`View ${entry.name}'s Week ${week} picks: ${entry.correct} correct`}>
+      <summary className="participant-summary" aria-label={`View ${entry.name}'s Week ${week} picks: ${correctness}`}>
         <span className="participant-rank">#{entry.rank}</span>
         <strong>{entry.name}</strong>
-        <span className="participant-score">{entry.correct} correct</span>
+        <span className="participant-score">{correctness}</span>
         <span className="participant-toggle"><span className="participant-show">View picks</span><span className="participant-hide">Hide picks</span><span aria-hidden="true">⌄</span></span>
       </summary>
       <PickResults entry={entry} week={week} scoringType={scoringType} />

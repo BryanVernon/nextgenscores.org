@@ -3,7 +3,7 @@ import { AuthContext } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import authFetch from "../authFetch";
 import { lineupLabel } from "../gameLineup";
-import { featuredGames } from "../featuredGames";
+import { featuredGames, featuredWeekIndex } from "../featuredGames";
 import { favoriteGameDay, favoriteTeamNextGame } from "../dashboardGames";
 import useTimeZone from "../useTimeZone";
 import { GameCard } from "./Scoreboard";
@@ -112,28 +112,72 @@ function TeamPanel({ team }) {
 }
 
 function FeaturedGamesPanel() {
+  const timeZone = useTimeZone();
   const [games, setGames] = useState([]);
+  const [weeks, setWeeks] = useState([]);
+  const [weekIndex, setWeekIndex] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [attempt, setAttempt] = useState(0);
+  const selectedWeek = weekIndex == null ? null : weeks[weekIndex];
+  const selectedWeekNumber = selectedWeek?.week ?? null;
 
   useEffect(() => {
     const controller = new AbortController();
     fetch(`${API_BASE}/api/schedule?conference=All`, { signal: controller.signal, cache: "no-cache" })
       .then(async response => {
-        if (!response.ok) throw new Error("Today's featured games are unavailable right now.");
+        if (!response.ok) throw new Error("This week’s featured games are unavailable right now.");
         const body = await response.json();
-        if (!Array.isArray(body?.games)) throw new Error("Today's featured games are unavailable right now.");
+        if (!Array.isArray(body?.weeks)) throw new Error("This week’s featured games are unavailable right now.");
+        const initialWeekIndex = featuredWeekIndex(body.weeks, new Date(), timeZone);
+        if (initialWeekIndex < 0) throw new Error("No featured week is scheduled right now.");
+        if (!controller.signal.aborted) {
+          setWeeks(body.weeks);
+          setWeekIndex(initialWeekIndex);
+        }
+      })
+      .catch(requestError => { if (!controller.signal.aborted) { setError(requestError.message); setLoading(false); } });
+    return () => controller.abort();
+  }, [attempt, timeZone]);
+
+  useEffect(() => {
+    if (selectedWeekNumber == null) return;
+    const controller = new AbortController();
+    fetch(`${API_BASE}/api/schedule?conference=All&week=${encodeURIComponent(selectedWeekNumber)}`, { signal: controller.signal, cache: "no-cache" })
+      .then(async response => {
+        if (!response.ok) throw new Error("This week’s featured games are unavailable right now.");
+        const body = await response.json();
+        if (!Array.isArray(body?.games)) throw new Error("This week’s featured games are unavailable right now.");
         if (!controller.signal.aborted) setGames(featuredGames(body.games));
       })
       .catch(requestError => { if (!controller.signal.aborted) setError(requestError.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [attempt]);
+  }, [selectedWeekNumber]);
+
+  function changeFeaturedWeek(offset) {
+    setLoading(true);
+    setError(null);
+    setWeekIndex(value => value + offset);
+  }
+
+  function retry() {
+    setGames([]);
+    setWeeks([]);
+    setWeekIndex(null);
+    setError(null);
+    setLoading(true);
+    setAttempt(value => value + 1);
+  }
 
   return <section className="dashboard-featured-section" aria-labelledby="dashboard-featured-title">
-    <div className="dashboard-section-heading"><div><p className="eyebrow">The slate</p><h2 id="dashboard-featured-title">Today’s featured games</h2></div><Link className="dashboard-link" to="/schedule">Full schedule <span aria-hidden="true">→</span></Link></div>
-    {loading ? <div className="dashboard-featured-status" role="status">Loading today’s featured games...</div> : error ? <div className="dashboard-featured-status" role="alert"><p>{error}</p><button className="dashboard-link" onClick={() => { setError(null); setLoading(true); setAttempt(value => value + 1); }}>Try again</button></div> : games.length === 0 ? <div className="dashboard-featured-status">No featured games are scheduled right now. <Link className="dashboard-link" to="/schedule">View the full schedule <span aria-hidden="true">→</span></Link></div> : <ul className="games-grid dashboard-featured-grid">{games.map(game => <li className="game-card" key={game._id || game.id}><GameCard game={game} /></li>)}</ul>}
+    <div className="dashboard-section-heading dashboard-featured-heading"><div><p className="eyebrow">The slate</p><h2 id="dashboard-featured-title">This week’s featured games</h2></div><Link className="dashboard-link" to="/schedule">Full schedule <span aria-hidden="true">→</span></Link></div>
+    <div className="featured-week-navigation" role="group" aria-label="Browse featured weeks">
+      <button type="button" className="schedule-button" disabled={loading || weekIndex == null || weekIndex <= 0} onClick={() => changeFeaturedWeek(-1)}>← <span>Previous</span></button>
+      <span className="featured-week-caption">{selectedWeek ? `Week ${selectedWeek.week}` : "Loading week"}</span>
+      <button type="button" className="schedule-button" disabled={loading || weekIndex == null || weekIndex >= weeks.length - 1} onClick={() => changeFeaturedWeek(1)}><span>Next</span> →</button>
+    </div>
+    {loading ? <div className="dashboard-featured-status" role="status">Loading this week’s featured games...</div> : error ? <div className="dashboard-featured-status" role="alert"><p>{error}</p><button className="dashboard-link" onClick={retry}>Try again</button></div> : games.length === 0 ? <div className="dashboard-featured-status">No featured games are scheduled this week. <Link className="dashboard-link" to="/schedule">View the full schedule <span aria-hidden="true">→</span></Link></div> : <ul className="games-grid dashboard-featured-grid">{games.map(game => <li className="game-card" key={game._id || game.id}><GameCard game={game} showDate /></li>)}</ul>}
   </section>;
 }
 

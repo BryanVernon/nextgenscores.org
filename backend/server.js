@@ -13,7 +13,7 @@ import requireMaintenance from "./middleware/requireMaintenance.js";
 import requireJobToken, { requireJobTokenFor } from "./middleware/requireJobToken.js";
 import { sendPickReminderEmail } from "./utils/mailer.js";
 import { buildReminderPreview } from "./utils/reminderPreview.js";
-import { requestedScheduleWeek, readProviderArray, storeImportedGames } from "./utils/scheduleData.js";
+import { currentScheduleWeek, requestedScheduleWeek, readProviderArray, storeImportedGames } from "./utils/scheduleData.js";
 import { isScoreboardRefreshTime } from "./utils/scoreboardSchedule.js";
 
 dotenv.config();
@@ -389,12 +389,6 @@ app.get("/api/games", async (req, res) => {
   }
 });
 
-function currentWeekFromMetadata(weeks) {
-  const now = Date.now();
-  const started = weeks.filter(item => new Date(item.startDate).getTime() <= now);
-  return started.at(-1)?.week ?? weeks[0]?.week ?? null;
-}
-
 // The schedule screen needs a small amount of metadata for its filters, but it
 // should never need to download an entire season's game cards at once.
 app.get("/api/schedule", async (req, res) => {
@@ -430,7 +424,7 @@ app.get("/api/schedule", async (req, res) => {
       ]),
     ]);
 
-    const currentWeek = currentWeekFromMetadata(weeks);
+    const currentWeek = currentScheduleWeek(weeks);
     let requestedWeek;
     try {
       requestedWeek = requestedScheduleWeek(req.query.week, currentWeek);
@@ -619,7 +613,7 @@ app.post("/api/jobs/friday-pick-reminders/preview", requireJobToken, async (req,
       { $project: { _id: 0, week: "$_id", startDate: 1 } },
       { $sort: { startDate: 1 } },
     ]);
-    const preview = buildReminderPreview(req.body?.email, { week: currentWeekFromMetadata(weeks) ?? 1 });
+    const preview = buildReminderPreview(req.body?.email, { week: currentScheduleWeek(weeks) ?? 1 });
     await sendPickReminderEmail({
       ...preview,
       firstGameAt: Date.now() + 24 * 60 * 60 * 1000,

@@ -1,3 +1,11 @@
+export function gameDateLabel(startDate, timeZone) {
+  const date = new Date(startDate);
+  if (Number.isNaN(date.getTime())) return null;
+  const weekday = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone }).format(date);
+  const monthDay = new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric", timeZone }).format(date);
+  return `${weekday} ${monthDay}`;
+}
+
 export function gameStatus(game, now = Date.now()) {
   if (game.completed === true) return { label: "Final", kind: "final" };
   const hasScore = game.homePoints != null && game.awayPoints != null;

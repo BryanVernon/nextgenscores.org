@@ -1,7 +1,9 @@
 export function favoriteGameDay(startDate, timeZone) {
   const date = new Date(startDate);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(date);
+  const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone }).format(date);
+  const monthDay = new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric", timeZone }).format(date);
+  return `${weekday} ${monthDay}`;
 }
 
 export function favoriteTeamNextGame(team, nextGame) {

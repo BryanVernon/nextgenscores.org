@@ -1,4 +1,4 @@
-export const CONFERENCES = ["AP Top 25", "SEC", "Big Ten", "ACC", "Big 12", "Pac-12", "American", "Mountain West", "Sun Belt", "Conference USA", "MAC", "Independent", "FBS Independents", "Pioneer", "UAC", "Ivy League"];
+export const CONFERENCES = ["AP Top 25", "Featured games", "SEC", "Big Ten", "ACC", "Big 12", "Pac-12", "American", "Mountain West", "Sun Belt", "Conference USA", "MAC", "Independent", "FBS Independents", "Pioneer", "UAC", "Ivy League"];
 
 export function getTeamGroups(games) {
   const teams = new Map();

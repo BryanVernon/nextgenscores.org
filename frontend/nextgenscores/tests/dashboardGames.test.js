@@ -26,6 +26,6 @@ test("favorite team game cards preserve the home and away logos", () => {
   });
 });
 
-test("favorite game day respects the selected timezone", () => {
-  assert.equal(favoriteGameDay("2026-09-20T03:30:00Z", "America/Chicago"), "Saturday");
+test("favorite game day includes the selected timezone date", () => {
+  assert.equal(favoriteGameDay("2026-09-20T03:30:00Z", "America/Chicago"), "Saturday 9/19");
 });

@@ -228,7 +228,6 @@ function WeeklyPicks({ pool, goBack }) {
     {!data && !error && <p role="status">Loading this week's games...</p>}
     {data && <>
       <p className="eyebrow">{lineupLabel(data.pool)} · {data.season} season</p><h2>{data.pool.name} — Week {data.week}</h2>
-      {data.startsLater && <p className="spread-guide" role="status">Your picks begin Week {data.week} of the {data.season} season. Earlier games will not count toward your entry.</p>}
       <p className="spread-guide">{againstSpread ? "Against the spread: choose the team that will cover its line. Add the displayed home spread to the home team's final score to determine the winner. An adjusted tie is a push and earns no point. Games without a line remain pending." : "Straight up: choose the team you think will win. Each correct pick earns one point; betting lines do not affect scoring."}</p>
       {games.length === 0 ? <p>No games are available for this week yet.</p> : picksSaved ? <>
         {viewingPicks && <><div className="picks-review-heading"><h3>Your Week {data.week} picks</h3></div><div className="weekly-games">{games.map(game => <PickGame key={game.id} game={game} choice={savedChoices[game.id]} readOnly locked={pickLocked(game, now)} />)}</div></>}

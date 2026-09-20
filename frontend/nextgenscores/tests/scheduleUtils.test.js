@@ -1,6 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gameStatus, groupGamesByDate, latestUpdate, spreadLabel } from "../src/scheduleUtils.js";
+import { readFileSync } from "node:fs";
+import { gameDateLabel, gameStatus, groupGamesByDate, latestUpdate, spreadLabel } from "../src/scheduleUtils.js";
+
+test("schedule game cards opt into kickoff date labels", () => {
+  const scoreboardSource = readFileSync(new URL("../src/pages/Scoreboard.jsx", import.meta.url), "utf8");
+  assert.match(scoreboardSource, /<GameCard game=\{game\} showDate \/>/);
+});
+
+test("featured game dates use the selected timezone", () => {
+  assert.equal(gameDateLabel("2026-09-27T00:30:00Z", "America/Chicago"), "Sat 9/26");
+  assert.equal(gameDateLabel("invalid", "America/Chicago"), null);
+});
 
 test("a kickoff in the past is not evidence of a live or final game", () => {
   const game = { startDate: "2026-09-01T12:00:00Z" };

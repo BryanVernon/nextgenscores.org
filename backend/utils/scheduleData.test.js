@@ -1,6 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { requestedScheduleWeek, readProviderArray, storeImportedGames } from "./scheduleData.js";
+import { currentScheduleWeek, requestedScheduleWeek, readProviderArray, storeImportedGames } from "./scheduleData.js";
+
+test("schedule current week rolls over on Sunday", () => {
+  const weeks = [
+    { week: 3, startDate: "2026-09-17T00:00:00Z" },
+    { week: 4, startDate: "2026-09-24T00:00:00Z" },
+  ];
+  assert.equal(currentScheduleWeek(weeks, Date.parse("2026-09-19T18:00:00Z")), 3);
+  assert.equal(currentScheduleWeek(weeks, Date.parse("2026-09-20T18:00:00Z")), 4);
+});
 
 test("week zero remains selectable after the season advances", () => {
   assert.equal(requestedScheduleWeek("0", 4), 0);
