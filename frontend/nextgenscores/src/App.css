@@ -69,9 +69,9 @@
 
 .filter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .filter label { color: var(--muted); font-size: 0.78rem; font-weight: 700; }
-.filter select {
+.filter select, .team-picker-trigger, .static-filter-picker-trigger {
   min-width: 138px;
-  padding: 10px 34px 10px 12px;
+  padding: 10px 12px;
   border: 1px solid #d6dedb;
   border-radius: 7px;
   background: var(--paper);
@@ -79,8 +79,23 @@
   font: inherit;
   font-size: 0.86rem;
   font-weight: 700;
-  cursor: pointer;
 }
+.filter select { padding-right: 34px; cursor: pointer; }
+.schedule-page .team-picker { position: relative; display: block; min-width: 190px; }
+.schedule-page .static-filter-picker { position: relative; display: block; min-width: 160px; }
+.team-picker-trigger, .static-filter-picker-trigger { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 14px; cursor: pointer; text-align: left; }
+.team-picker-menu, .static-filter-picker-menu { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: 0 16px 36px rgba(24, 44, 39, .16); }
+.team-picker-menu { width: min(260px, calc(100vw - 48px)); }
+.static-filter-picker-menu { width: min(220px, calc(100vw - 48px)); }
+.team-picker-menu input { width: 100%; min-height: 42px; box-sizing: border-box; padding: 10px 12px; border: 1px solid #d6dedb; border-radius: 7px; background: var(--paper); color: var(--ink); font: inherit; }
+.team-picker-options, .static-filter-picker-options { display: grid; gap: 8px; max-height: 280px; margin-top: 10px; overflow-y: auto; }
+.static-filter-picker-options { margin-top: 0; }
+.team-picker-options section { display: grid; gap: 3px; }
+.team-picker-options p { margin: 5px 6px 2px; color: var(--muted); font-size: .73rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.team-picker-options button, .static-filter-picker-options button { min-height: 36px; padding: 7px 9px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: inherit; font-size: .85rem; font-weight: 650; text-align: left; cursor: pointer; }
+.team-picker-options button:hover, .team-picker-options button:focus-visible, .team-picker-options button.selected, .static-filter-picker-options button:hover, .static-filter-picker-options button:focus-visible, .static-filter-picker-options button.selected { background: var(--accent-soft); color: var(--accent); }
+.team-picker-options button:focus-visible, .team-picker-trigger:focus-visible, .team-picker-menu input:focus, .static-filter-picker-options button:focus-visible, .static-filter-picker-trigger:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.team-picker-empty { padding: 12px 6px; text-transform: none !important; letter-spacing: 0 !important; }
 .filter select:focus { outline: 3px solid var(--focus-ring); border-color: var(--accent); }
 
 .games-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
@@ -260,7 +275,8 @@ button.dashboard-link { min-height: 44px; padding: 8px 0; border: 0; background:
   .schedule-count span { margin: 0; }
   .filter-container { align-items: stretch; flex-direction: column; }
   .filter { align-items: stretch; }
-  .filter select { flex: 1; min-width: 0; }
+  .filter select, .schedule-page .team-picker, .schedule-page .static-filter-picker { flex: 1; min-width: 0; }
+  .team-picker-trigger, .static-filter-picker-trigger { min-width: 0; }
   .games-grid { grid-template-columns: 1fr; }
 }
 
@@ -272,7 +288,8 @@ button.dashboard-link { min-height: 44px; padding: 8px 0; border: 0; background:
   .filter-container { gap: 16px; margin-bottom: 18px; padding: 14px; }
   .filter { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; }
   .filter label { align-self: center; }
-  .filter select { width: 100%; min-height: 42px; }
+  .filter select, .team-picker-trigger, .static-filter-picker-trigger { width: 100%; min-height: 42px; }
+  .schedule-page .team-picker, .schedule-page .static-filter-picker { width: 100%; }
   .game-card-content { gap: 14px; padding: 16px; }
   .team-info-left { min-width: 0; gap: 9px; }
   .team-logo { flex-basis: 38px; width: 38px; height: 38px; }

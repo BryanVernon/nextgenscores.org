@@ -15,6 +15,7 @@ import { sendPickReminderEmail } from "./utils/mailer.js";
 import { buildReminderPreview } from "./utils/reminderPreview.js";
 import { currentScheduleWeek, requestedScheduleWeek, readProviderArray, seasonTeamRecords, storeImportedGames } from "./utils/scheduleData.js";
 import { isScoreboardRefreshTime } from "./utils/scoreboardSchedule.js";
+import { isUsableApPoll, latestApWeek } from "./utils/apRankings.js";
 
 dotenv.config();
 
@@ -243,14 +244,14 @@ async function fetchApRankings(year) {
         week: w.week,
         apPoll: w.polls?.find(p => p.poll === "AP Top 25"),
       }))
-      .filter(w => w.apPoll);
+      .filter(w => isUsableApPoll(w.apPoll));
 
-    if (apWeeks.length === 0) {
-      console.log(`No AP poll data found for ${year}`);
+    const latest = latestApWeek(apWeeks);
+    if (!latest) {
+      console.log(`No valid AP poll data found for ${year}`);
       return new Map();
     }
 
-    const latest = apWeeks[apWeeks.length - 1];
     console.log(`AP rankings fetched: week ${latest.week}, ${latest.apPoll.ranks.length} ranked teams for ${year}`);
 
     return new Map(

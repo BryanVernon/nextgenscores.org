@@ -12,6 +12,19 @@ test("team schedule links preserve the full team name", () => {
   assert.equal(teamScheduleHref(""), "/schedule");
 });
 
+test("week and conference use the shared filter picker styling", () => {
+  const scoreboardSource = readFileSync(new URL("../src/pages/Scoreboard.jsx", import.meta.url), "utf8");
+  assert.match(scoreboardSource, /<StaticFilterPicker label="Week"/);
+  assert.match(scoreboardSource, /<StaticFilterPicker label="Conference"/);
+});
+
+test("team picker restores focus to its trigger after Escape", () => {
+  const scoreboardSource = readFileSync(new URL("../src/pages/Scoreboard.jsx", import.meta.url), "utf8");
+  assert.match(scoreboardSource, /function closeTeamPicker\(\)/);
+  assert.match(scoreboardSource, /setTeamMenuOpen\(false\);\s*requestAnimationFrame\(\(\) => teamTriggerRef\.current\?\.focus\(\)\)/);
+  assert.match(scoreboardSource, /function selectTeam[\s\S]*closeTeamPicker\(\)/);
+});
+
 test("schedule game cards opt into kickoff date labels", () => {
   const scoreboardSource = readFileSync(new URL("../src/pages/Scoreboard.jsx", import.meta.url), "utf8");
   assert.match(scoreboardSource, /<GameCard game=\{game\} showDate \/>/);

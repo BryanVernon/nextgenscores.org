@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import fetch from "node-fetch";
 import { ncaaScoreboardUpdates } from "../utils/ncaaScoreboardData.js";
 import { NCAA_SCOREBOARD_URL } from "../utils/ncaaScoreboardSource.js";
-import { currentApRanks, rankingSnapshotOperations, requireRankingSnapshot } from "../utils/apRankings.js";
+import { currentApRanks, isUsableApPoll, latestApWeek, rankingSnapshotOperations, requireRankingSnapshot } from "../utils/apRankings.js";
 
 dotenv.config();
 
@@ -145,10 +145,11 @@ async function run() {
         const apWeeks = data
           .map((entry) => ({
             week: entry.week,
-            ranks: entry.polls?.find((poll) => poll.poll === "AP Top 25")?.ranks || [],
+            apPoll: entry.polls?.find((poll) => poll.poll === "AP Top 25"),
           }))
-          .filter((entry) => entry.ranks.length);
-        const latest = apWeeks.at(-1);
+          .filter(entry => isUsableApPoll(entry.apPoll))
+          .map(entry => ({ week: entry.week, ranks: entry.apPoll.ranks }));
+        const latest = latestApWeek(apWeeks);
         const documents = (latest?.ranks || []).map((rank) => ({
           year,
           school: rank.school,

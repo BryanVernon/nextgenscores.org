@@ -1,7 +1,7 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import "../App.css";
-import { CONFERENCES, getTeamGroups } from "../teamOptions";
+import { CONFERENCES, filterTeamGroups, getTeamGroups } from "../teamOptions";
 import { gameDateLabel, gameStatus, groupGamesByDate, latestUpdate, spreadLabel, teamScheduleFilters, teamScheduleHref } from "../scheduleUtils";
 import { defaultScheduleConference } from "../scheduleFilters";
 import { effectiveScheduleConferences, scheduleConferenceGames } from "../schedulePreferences";
@@ -26,6 +26,9 @@ export default function Scoreboard() {
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [checkedAt, setCheckedAt] = useState(null);
+  const [teamSearch, setTeamSearch] = useState("");
+  const [teamMenuOpen, setTeamMenuOpen] = useState(false);
+  const teamTriggerRef = useRef(null);
   const requestKey = `${week}|${conference}|${team}`;
 
   useEffect(() => {
@@ -72,6 +75,7 @@ export default function Scoreboard() {
   }, [week, conference, team, requestKey, refresh]);
 
   const teamGroups = useMemo(() => getTeamGroups(data.teams), [data.teams]);
+  const filteredTeamGroups = useMemo(() => filterTeamGroups(teamGroups, teamSearch), [teamGroups, teamSearch]);
   const selectedConferences = effectiveScheduleConferences(user?.scheduleConferences, user?.favoriteTeams, data.teams);
   const hasMatchingData = loadedKey === requestKey;
   const loadedGames = hasMatchingData ? data.games : [];
@@ -95,6 +99,17 @@ export default function Scoreboard() {
     });
   }
 
+  function closeTeamPicker() {
+    setTeamMenuOpen(false);
+    requestAnimationFrame(() => teamTriggerRef.current?.focus());
+  }
+
+  function selectTeam(value) {
+    changeFilters(value ? teamScheduleFilters(value) : { team: "", conference: "All" });
+    setTeamSearch("");
+    closeTeamPicker();
+  }
+
   return (
     <div className="schedule-page">
       <header className="schedule-header">
@@ -114,24 +129,29 @@ export default function Scoreboard() {
           <span className="filter-current">{team || (conference === "All" ? `${selectedConferences.length} selected conferences` : conference)}</span>
         </div>
         <div className="filter">
-          <label htmlFor="week-filter">Week</label>
-          <select id="week-filter" value={week} onChange={event => changeFilters({ week: event.target.value })}>
-            <option value="current">Current week{data.currentWeek != null ? ` (${data.currentWeek})` : ""}</option>
-            <option value="all">All weeks</option>
-            {weeks.map(value => <option key={value} value={value}>Week {value}</option>)}
-          </select>
-          <label htmlFor="conference-filter">Conference</label>
-          <select id="conference-filter" value={conference} onChange={event => changeFilters({ conference: event.target.value, team: "" })}>
-            <option value="All">My selected conferences</option>
-            {CONFERENCES.map(value => <option key={value} value={value}>{value}</option>)}
-          </select>
-          <label htmlFor="team-filter">Team</label>
-          <select id="team-filter" value={team} onChange={event => changeFilters(event.target.value ? teamScheduleFilters(event.target.value) : { team: "", conference: "All" })}>
-            <option value="">All teams</option>
-            {team && !data.teams.some(item => item.name === team) && <option value={team}>{team}</option>}
-            {teamGroups.top25.length > 0 && <optgroup label="AP Top 25">{teamGroups.top25.map(item => <option key={item.name} value={item.name}>#{item.rank} {item.name}</option>)}</optgroup>}
-            {teamGroups.remaining.map(group => <optgroup key={group.name} label={group.name}>{group.teams.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}</optgroup>)}
-          </select>
+          <StaticFilterPicker label="Week" value={week} options={[
+            { value: "current", label: `Current week${data.currentWeek != null ? ` (${data.currentWeek})` : ""}` },
+            { value: "all", label: "All weeks" },
+            ...weeks.map(value => ({ value: String(value), label: `Week ${value}` })),
+          ]} onSelect={value => changeFilters({ week: value })} />
+          <StaticFilterPicker label="Conference" value={conference} options={[
+            { value: "All", label: "My selected conferences" },
+            ...CONFERENCES.map(value => ({ value, label: value })),
+          ]} onSelect={value => changeFilters({ conference: value, team: "" })} />
+          <label id="team-filter-label">Team</label>
+          <div className="team-picker">
+            <button ref={teamTriggerRef} type="button" className="team-picker-trigger" aria-labelledby="team-filter-label" aria-haspopup="dialog" aria-expanded={teamMenuOpen} aria-controls="team-picker-menu" onClick={() => setTeamMenuOpen(open => !open)}>{team || "All teams"}<span aria-hidden="true">⌄</span></button>
+            {teamMenuOpen && <div id="team-picker-menu" className="team-picker-menu" role="dialog" aria-labelledby="team-filter-label" onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); closeTeamPicker(); } }}>
+              <label className="sr-only" htmlFor="team-picker-search">Search teams</label>
+              <input id="team-picker-search" type="search" value={teamSearch} onChange={event => setTeamSearch(event.target.value)} placeholder="Search teams" autoFocus />
+              <div className="team-picker-options" aria-live="polite">
+                <button type="button" className={team ? "" : "selected"} aria-pressed={!team} onClick={() => selectTeam("")}>All teams</button>
+                {filteredTeamGroups.top25.length > 0 && <section aria-label="AP Top 25"><p>AP Top 25</p>{filteredTeamGroups.top25.map(item => <button key={item.name} type="button" className={team === item.name ? "selected" : ""} aria-pressed={team === item.name} onClick={() => selectTeam(item.name)}>#{item.rank} {item.name}</button>)}</section>}
+                {filteredTeamGroups.remaining.map(group => <section key={group.name} aria-label={group.name}><p>{group.name}</p>{group.teams.map(item => <button key={item.name} type="button" className={team === item.name ? "selected" : ""} aria-pressed={team === item.name} onClick={() => selectTeam(item.name)}>{item.name}</button>)}</section>)}
+                {teamSearch.trim() && filteredTeamGroups.top25.length === 0 && filteredTeamGroups.remaining.length === 0 && <p className="team-picker-empty">No teams found</p>}
+              </div>
+            </div>}
+          </div>
         </div>
       </section>
 
@@ -168,6 +188,35 @@ export default function Scoreboard() {
       </div>
     </div>
   );
+}
+
+function StaticFilterPicker({ label, value, options, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const id = `schedule-${label.toLowerCase().replace(/\s+/g, "-")}-filter`;
+  const selected = options.find(option => option.value === value) || options[0];
+
+  function close() {
+    setOpen(false);
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }
+
+  function select(value) {
+    onSelect(value);
+    close();
+  }
+
+  return <>
+    <label id={`${id}-label`}>{label}</label>
+    <div className="static-filter-picker">
+      <button ref={triggerRef} type="button" className="static-filter-picker-trigger" aria-labelledby={`${id}-label`} aria-haspopup="dialog" aria-expanded={open} aria-controls={`${id}-menu`} onClick={() => setOpen(current => !current)}>{selected?.label}<span aria-hidden="true">⌄</span></button>
+      {open && <div id={`${id}-menu`} className="static-filter-picker-menu" role="dialog" aria-labelledby={`${id}-label`} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); close(); } }}>
+        <div className="static-filter-picker-options">
+          {options.map(option => <button key={option.value} type="button" className={option.value === value ? "selected" : ""} aria-pressed={option.value === value} onClick={() => select(option.value)}>{option.label}</button>)}
+        </div>
+      </div>}
+    </div>
+  </>;
 }
 
 export function GameCard({ game, showDate = false }) {

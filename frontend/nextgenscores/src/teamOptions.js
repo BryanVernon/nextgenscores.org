@@ -1,5 +1,17 @@
 export const CONFERENCES = ["AP Top 25", "Featured games", "SEC", "Big Ten", "ACC", "Big 12", "Pac-12", "American", "Mountain West", "Sun Belt", "Conference USA", "MAC", "Independent", "FBS Independents", "Pioneer", "UAC", "Ivy League"];
 
+export function filterTeamGroups(groups, query) {
+  const normalized = query.trim().toLocaleLowerCase();
+  if (!normalized) return groups;
+  const matches = team => team.name.toLocaleLowerCase().includes(normalized);
+  return {
+    top25: groups.top25.filter(matches),
+    remaining: groups.remaining
+      .map(group => ({ ...group, teams: group.teams.filter(matches) }))
+      .filter(group => group.teams.length),
+  };
+}
+
 export function getTeamGroups(games) {
   const teams = new Map();
   const conferenceOrder = CONFERENCES.slice(1);
