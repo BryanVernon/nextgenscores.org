@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./Leaderboard.css";
 import authFetch from "../authFetch";
+import { seasonPoints } from "../leaderboardResults";
 import { lineupLabel } from "../gameLineup";
 import LeaderboardEntry, { PickResults } from "../components/LeaderboardEntry";
 
@@ -91,7 +92,7 @@ function PoolLeaderboard({ pool }) {
       <p className="leaderboard-note">{standings.view === "season" ? `${standings.season} season total` : `Week ${standings.week}`} · {standings.completedGames} of {standings.totalGames} games final. One point per correct pick; ties and pushes earn no points.</p>
       {standings.leaderboard.length === 0 ? <p>No results yet for this season.</p> : <ol className="participant-list">{standings.leaderboard.map(entry => standings.view === "season"
         ? <li className="participant-entry" key={entry.userId}><details className={`participant-details${entry.rank === 1 ? " participant-leader" : ""}`}>
-          <summary className="participant-summary"><span className="participant-rank">#{entry.rank}</span><strong>{entry.name}</strong><span className="participant-score">{entry.correct} points</span><span className="participant-toggle">By week ⌄</span></summary>
+          <summary className="participant-summary"><span className="participant-rank">#{entry.rank}</span><strong>{entry.name}</strong><span className="participant-score">{seasonPoints(entry.correct, standings.totalGames)}</span><span className="participant-toggle">By week ⌄</span></summary>
           <div className="participant-breakdown"><h4>{entry.name}'s season</h4><ul className="season-week-results">{entry.weeks.map(item => <SeasonWeekResult key={item.week} poolId={pool.id} season={standings.season} entry={entry} item={item} scoringType={pool.scoringType} />)}</ul></div>
         </details></li>
         : <LeaderboardEntry key={entry.userId} entry={entry} week={standings.week} scoringType={pool.scoringType} />)}</ol>}

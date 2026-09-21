@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { favoriteGameDay, favoriteTeamNextGame } from "../src/dashboardGames.js";
 
 test("favorite team game cards preserve the home and away logos", () => {
@@ -24,6 +25,11 @@ test("favorite team game cards preserve the home and away logos", () => {
     spread: -3.5,
     overUnder: 52.5,
   });
+});
+
+test("favorite next-game cards show the kickoff date", () => {
+  const dashboardSource = readFileSync(new URL("../src/pages/Dashboard.jsx", import.meta.url), "utf8");
+  assert.match(dashboardSource, /dashboard-game-label[\s\S]{0,200}<GameCard game=\{game\} showDate \/>/);
 });
 
 test("favorite game day includes the selected timezone date", () => {

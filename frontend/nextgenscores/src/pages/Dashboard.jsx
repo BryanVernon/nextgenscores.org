@@ -107,7 +107,7 @@ function TeamPanel({ team }) {
     <span className="panel-label">{team}</span>
     <strong>{record.wins}-{record.losses}</strong>
     {lastGame && <p>Last game: {lastGame.isHome ? "vs" : "at"} {lastGame.opponent}, {lastGame.teamScore}-{lastGame.oppScore}</p>}
-    {game ? <div className="dashboard-team-game"><span className="dashboard-game-label">Next game{gameDay ? ` · ${gameDay}` : ""}</span><div className="game-card"><GameCard game={game} /></div></div> : <p className="dashboard-no-next-game">No upcoming game is scheduled yet.</p>}
+    {game ? <div className="dashboard-team-game"><span className="dashboard-game-label">Next game{gameDay ? ` · ${gameDay}` : ""}</span><div className="game-card"><GameCard game={game} showDate /></div></div> : <p className="dashboard-no-next-game">No upcoming game is scheduled yet.</p>}
   </div>;
 }
 

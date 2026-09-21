@@ -8,6 +8,12 @@ export function chronologicalResults(results = []) {
   return [...results].sort((left, right) => kickoffTime(left) - kickoffTime(right));
 }
 
+export function seasonPoints(correct, total) {
+  const safeCorrect = Number.isFinite(Number(correct)) ? Number(correct) : 0;
+  const safeTotal = Number.isFinite(Number(total)) && Number(total) > 0 ? Number(total) : 0;
+  return `${safeCorrect}/${safeTotal} points`;
+}
+
 export function weeklyCorrectness(correct, total) {
   const safeCorrect = Number.isFinite(Number(correct)) ? Number(correct) : 0;
   const safeTotal = Number.isFinite(Number(total)) && Number(total) > 0 ? Number(total) : 0;
