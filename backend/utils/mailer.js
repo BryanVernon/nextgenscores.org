@@ -44,14 +44,21 @@ export async function sendPickReminderEmail({ to, ...details }) {
   });
 }
 
-export async function sendLeaderboardEmail({ to, name, poolName, week, entries }) {
+export function leaderboardEmail({ name, poolName, week, entries, games = [], baseUrl = appUrl() }) {
+  const escape = value => String(value ?? "").replace(/[&<>"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[character]));
+  const standings = entries.map(entry => `#${entry.rank} ${entry.name} — ${entry.correct} correct`);
+  const scores = games.map(game => `${game.awayTeam} ${game.awayPoints} at ${game.homeTeam} ${game.homePoints}`);
+  const rows = entries.map(entry => `<li>#${entry.rank} ${escape(entry.name)} — ${entry.correct} correct</li>`).join("");
+  const scoreRows = games.map(game => `<li>${escape(game.awayTeam)} ${game.awayPoints} at ${escape(game.homeTeam)} ${game.homePoints}</li>`).join("");
+  return {
+    subject: `${poolName}: Week ${week} results and standings`,
+    text: `Hi ${name},\n\nWeek ${week} results:\n${scores.join("\n")}\n\nStandings:\n${standings.join("\n")}\n\n${baseUrl}/pickem`,
+    html: `<p>Hi ${escape(name)},</p><p>Week ${week} is complete in <strong>${escape(poolName)}</strong>.</p><h2>Final scores</h2><ul>${scoreRows}</ul><h2>Standings</h2><ol>${rows}</ol><p><a href="${escape(baseUrl)}/pickem">View Pick 'Em</a></p>`,
+  };
+}
+
+export async function sendLeaderboardEmail({ to, name, poolName, week, entries, games }) {
   const transporter = createTransporter();
   const from = process.env.SMTP_FROM || "NextGenScores <bryan@nextgenscores.org>";
-  const rows = entries.map(entry => `<li>#${entry.rank} ${entry.name} — ${entry.correct} correct</li>`).join("");
-  return transporter.sendMail({
-    from, to,
-    subject: `${poolName}: Week ${week} standings are in`,
-    text: `Hi ${name},\n\nWeek ${week} is complete.\n${entries.map(entry => `#${entry.rank} ${entry.name} — ${entry.correct} correct`).join("\n")}\n\n${appUrl()}/pickem`,
-    html: `<p>Hi ${name},</p><p>Week ${week} is complete in <strong>${poolName}</strong>.</p><ol>${rows}</ol><p><a href="${appUrl()}/pickem">View Pick 'Em</a></p>`,
-  });
+  return transporter.sendMail({ from, to, ...leaderboardEmail({ name, poolName, week, entries, games }) });
 }

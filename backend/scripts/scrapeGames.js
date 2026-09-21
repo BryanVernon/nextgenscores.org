@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import fetch from "node-fetch";
 import { ncaaScoreboardUpdates } from "../utils/ncaaScoreboardData.js";
 import { NCAA_SCOREBOARD_URL } from "../utils/ncaaScoreboardSource.js";
+import { currentApRanks, rankingSnapshotOperations, requireRankingSnapshot } from "../utils/apRankings.js";
 
 dotenv.config();
 
@@ -155,11 +156,13 @@ async function run() {
           pollWeek: latest.week,
           updatedAt: new Date(),
         }));
-        if (documents.length) {
-          await rankingCache.bulkWrite(
-            operations(documents, (rank) => ({ year: rank.year, school: rank.school }))
-          );
-        }
+        requireRankingSnapshot(documents);
+        await rankingCache.bulkWrite(rankingSnapshotOperations(year, documents), { ordered: true });
+        const ranks = new Map(documents.map(rank => [rank.school, rank.rank]));
+        const scheduled = await games.find({ season: year }, { projection: { id: 1, homeTeam: 1, awayTeam: 1 } }).toArray();
+        if (scheduled.length) await games.bulkWrite(scheduled.map(game => ({
+          updateOne: { filter: { id: game.id }, update: { $set: currentApRanks(game, ranks) } },
+        })), { ordered: false });
         return documents.length;
       },
     });
@@ -249,8 +252,7 @@ async function run() {
             awayConference: value(game, "awayConference", "away_conference"),
             homeLogo: logos.get(homeTeam) || previous.homeLogo || "",
             awayLogo: logos.get(awayTeam) || previous.awayLogo || "",
-            homeApRank: ranks.get(homeTeam) ?? previous.homeApRank ?? null,
-            awayApRank: ranks.get(awayTeam) ?? previous.awayApRank ?? null,
+            ...currentApRanks({ homeTeam, awayTeam }, ranks),
             spread: line.spread ?? previous.spread ?? null,
             overUnder: line.overUnder ?? previous.overUnder ?? null,
             oddsSource: line.spread != null || line.overUnder != null

@@ -8,6 +8,7 @@
     "scrape:cfb": "node scripts/scrapeGames.js",
     "notify:pools": "node scripts/sendPoolNotifications.js",
     "notify:friday": "node scripts/sendFridayReminders.js",
+    "notify:sunday-results": "node scripts/sendSundayResults.js",
     "admin:promote": "node scripts/promoteAdmin.js",
     "test": "node --test"
   },

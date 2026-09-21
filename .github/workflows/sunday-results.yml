@@ -1,0 +1,40 @@
+name: Sunday Results
+
+on:
+  schedule:
+    # Hourly Sunday UTC; Render sends only during the 9 AM Central hour.
+    - cron: '17 * * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview eligibility without sending emails'
+        type: boolean
+        default: true
+      force:
+        description: 'Allow a manual run outside Sunday 9 AM Central'
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: sunday-results
+  cancel-in-progress: false
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RESULTS_JOB_URL: https://nextgenscores-org.onrender.com/api/jobs/sunday-results
+      RESULTS_JOB_TOKEN: ${{ secrets.RESULTS_JOB_TOKEN }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force && 'true' || 'false' }}
+    steps:
+      - name: Trigger the protected Render results job
+        run: |
+          curl --fail-with-body --show-error --retry 2 --retry-all-errors --max-time 600 \
+            --request POST "$RESULTS_JOB_URL" \
+            --header "Authorization: Bearer $RESULTS_JOB_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"dryRun\":$DRY_RUN,\"force\":$FORCE}"

@@ -543,8 +543,10 @@ app.use("/api/pools", poolRoutes);
 app.use("/api/admin", adminRoutes);
 
 const fridayReminderScript = fileURLToPath(new URL("./scripts/sendFridayReminders.js", import.meta.url));
+const sundayResultsScript = fileURLToPath(new URL("./scripts/sendSundayResults.js", import.meta.url));
 const scoreboardRefreshScript = fileURLToPath(new URL("./scripts/refreshScoreboardLocal.js", import.meta.url));
 const requireScoreboardJobToken = requireJobTokenFor("SCOREBOARD_JOB_TOKEN");
+const requireSundayResultsJobToken = requireJobTokenFor("RESULTS_JOB_TOKEN");
 let scoreboardRefreshRunning = false;
 
 function runFridayReminderJob(dryRun) {
@@ -558,6 +560,17 @@ function runFridayReminderJob(dryRun) {
     child.stderr.on("data", data => { output += data; });
     child.once("error", reject);
     child.once("close", code => code === 0 ? resolve(output.trim()) : reject(new Error(`Reminder job exited with code ${code}`)));
+  });
+}
+
+function runSundayResultsJob(dryRun, force) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [sundayResultsScript, ...(dryRun ? ["--dry-run"] : []), ...(force ? ["--force"] : [])], { env: process.env, windowsHide: true });
+    let output = "";
+    child.stdout.on("data", data => { output += data; });
+    child.stderr.on("data", data => { output += data; });
+    child.once("error", reject);
+    child.once("close", code => code === 0 ? resolve(output.trim()) : reject(new Error(`Sunday results job exited with code ${code}`)));
   });
 }
 
@@ -593,6 +606,17 @@ app.post("/api/jobs/friday-pick-reminders", requireJobToken, async (req, res) =>
   } catch (error) {
     console.error("Remote Friday reminder job failed:", error.message);
     res.status(500).json({ message: "Friday reminder job failed" });
+  }
+});
+
+app.post("/api/jobs/sunday-results", requireSundayResultsJobToken, async (req, res) => {
+  try {
+    const output = await runSundayResultsJob(req.body?.dryRun === true, req.body?.force === true);
+    console.log("Sunday results job triggered remotely:", output);
+    res.status(202).json({ message: "Sunday results job completed", output });
+  } catch (error) {
+    console.error("Remote Sunday results job failed:", error.message);
+    res.status(500).json({ message: "Sunday results job failed" });
   }
 });
 
