@@ -157,12 +157,22 @@ async function run() {
           updatedAt: new Date(),
         }));
         requireRankingSnapshot(documents);
-        await rankingCache.bulkWrite(rankingSnapshotOperations(year, documents), { ordered: true });
         const ranks = new Map(documents.map(rank => [rank.school, rank.rank]));
-        const scheduled = await games.find({ season: year }, { projection: { id: 1, homeTeam: 1, awayTeam: 1 } }).toArray();
-        if (scheduled.length) await games.bulkWrite(scheduled.map(game => ({
-          updateOne: { filter: { id: game.id }, update: { $set: currentApRanks(game, ranks) } },
-        })), { ordered: false });
+        const session = await mongoose.startSession();
+        try {
+          await session.withTransaction(async () => {
+            await rankingCache.bulkWrite(rankingSnapshotOperations(year, documents), { ordered: true, session });
+            const scheduled = await games.find(
+              { season: year },
+              { projection: { id: 1, homeTeam: 1, awayTeam: 1 }, session }
+            ).toArray();
+            if (scheduled.length) await games.bulkWrite(scheduled.map(game => ({
+              updateOne: { filter: { id: game.id }, update: { $set: currentApRanks(game, ranks) } },
+            })), { ordered: false, session });
+          });
+        } finally {
+          await session.endSession();
+        }
         return documents.length;
       },
     });
