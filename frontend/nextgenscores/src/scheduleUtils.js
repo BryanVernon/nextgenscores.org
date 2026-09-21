@@ -1,3 +1,11 @@
+export function teamScheduleFilters(team) {
+  return { team, conference: "All", week: "all" };
+}
+
+export function teamScheduleHref(team) {
+  return team ? `/schedule?week=all&team=${encodeURIComponent(team)}` : "/schedule";
+}
+
 export function gameDateLabel(startDate, timeZone) {
   const date = new Date(startDate);
   if (Number.isNaN(date.getTime())) return null;

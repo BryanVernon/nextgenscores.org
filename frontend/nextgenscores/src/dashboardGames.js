@@ -13,6 +13,8 @@ export function favoriteTeamNextGame(team, nextGame) {
     awayTeam: nextGame.isHome ? nextGame.opponent : team,
     homeLogo: nextGame.isHome ? nextGame.teamLogo : nextGame.opponentLogo,
     awayLogo: nextGame.isHome ? nextGame.opponentLogo : nextGame.teamLogo,
+    homeRecord: nextGame.isHome ? nextGame.teamRecord : nextGame.opponentRecord,
+    awayRecord: nextGame.isHome ? nextGame.opponentRecord : nextGame.teamRecord,
     startDate: nextGame.startDate,
     outlet: nextGame.outlet,
     spread: nextGame.spread,

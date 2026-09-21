@@ -1,7 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { gameDateLabel, gameStatus, groupGamesByDate, latestUpdate, spreadLabel } from "../src/scheduleUtils.js";
+import { gameDateLabel, gameStatus, groupGamesByDate, latestUpdate, spreadLabel, teamScheduleFilters, teamScheduleHref } from "../src/scheduleUtils.js";
+
+test("team selection shows all weeks", () => {
+  assert.deepEqual(teamScheduleFilters("Texas A&M"), { team: "Texas A&M", conference: "All", week: "all" });
+});
+
+test("team schedule links preserve the full team name", () => {
+  assert.equal(teamScheduleHref("Texas A&M"), "/schedule?week=all&team=Texas%20A%26M");
+  assert.equal(teamScheduleHref(""), "/schedule");
+});
 
 test("schedule game cards opt into kickoff date labels", () => {
   const scoreboardSource = readFileSync(new URL("../src/pages/Scoreboard.jsx", import.meta.url), "utf8");

@@ -13,6 +13,8 @@ test("favorite team game cards preserve the home and away logos", () => {
     overUnder: 52.5,
     teamLogo: "team-a.svg",
     opponentLogo: "team-b.svg",
+    teamRecord: "3-1",
+    opponentRecord: "2-2",
   });
 
   assert.deepEqual(game, {
@@ -20,6 +22,8 @@ test("favorite team game cards preserve the home and away logos", () => {
     awayTeam: "Team A",
     homeLogo: "team-b.svg",
     awayLogo: "team-a.svg",
+    homeRecord: "2-2",
+    awayRecord: "3-1",
     startDate: "2026-09-19T18:00:00Z",
     outlet: "ESPN",
     spread: -3.5,

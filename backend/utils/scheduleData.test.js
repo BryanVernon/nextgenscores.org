@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { currentScheduleWeek, requestedScheduleWeek, readProviderArray, storeImportedGames } from "./scheduleData.js";
+import { currentScheduleWeek, requestedScheduleWeek, readProviderArray, seasonTeamRecords, storeImportedGames } from "./scheduleData.js";
 
 test("schedule current week rolls over on Sunday", () => {
   const weeks = [
@@ -9,6 +9,18 @@ test("schedule current week rolls over on Sunday", () => {
   ];
   assert.equal(currentScheduleWeek(weeks, Date.parse("2026-09-19T18:00:00Z")), 3);
   assert.equal(currentScheduleWeek(weeks, Date.parse("2026-09-20T18:00:00Z")), 4);
+});
+
+test("season team records count only completed decisive games", () => {
+  const records = seasonTeamRecords([
+    { homeTeam: "Team A", awayTeam: "Team B", homePoints: 24, awayPoints: 10, completed: true },
+    { homeTeam: "Team C", awayTeam: "Team A", homePoints: 17, awayPoints: 21, completed: true },
+    { homeTeam: "Team A", awayTeam: "Team C", homePoints: 7, awayPoints: 7, completed: true },
+    { homeTeam: "Team B", awayTeam: "Team C", homePoints: 14, awayPoints: 3, completed: false },
+  ]);
+  assert.equal(records.get("Team A"), "2-0");
+  assert.equal(records.get("Team B"), "0-1");
+  assert.equal(records.get("Team C"), "0-1");
 });
 
 test("week zero remains selectable after the season advances", () => {

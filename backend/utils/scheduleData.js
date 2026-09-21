@@ -29,6 +29,25 @@ function addDays(dateKey, days) {
   return date.toISOString().slice(0, 10);
 }
 
+export function seasonTeamRecords(games) {
+  const records = new Map();
+  const update = (team, won) => {
+    if (!team) return;
+    const record = records.get(team) || { wins: 0, losses: 0 };
+    if (won) record.wins += 1;
+    else record.losses += 1;
+    records.set(team, record);
+  };
+
+  for (const game of games || []) {
+    if (game?.completed !== true || !Number.isFinite(Number(game.homePoints)) || !Number.isFinite(Number(game.awayPoints)) || game.homePoints === game.awayPoints) continue;
+    update(game.homeTeam, Number(game.homePoints) > Number(game.awayPoints));
+    update(game.awayTeam, Number(game.awayPoints) > Number(game.homePoints));
+  }
+
+  return new Map([...records].map(([team, record]) => [team, `${record.wins}-${record.losses}`]));
+}
+
 export function requestedScheduleWeek(value, currentWeek) {
   if (value === "all") return null;
   if (value == null || value === "") return currentWeek;

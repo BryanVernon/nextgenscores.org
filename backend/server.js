@@ -13,7 +13,7 @@ import requireMaintenance from "./middleware/requireMaintenance.js";
 import requireJobToken, { requireJobTokenFor } from "./middleware/requireJobToken.js";
 import { sendPickReminderEmail } from "./utils/mailer.js";
 import { buildReminderPreview } from "./utils/reminderPreview.js";
-import { currentScheduleWeek, requestedScheduleWeek, readProviderArray, storeImportedGames } from "./utils/scheduleData.js";
+import { currentScheduleWeek, requestedScheduleWeek, readProviderArray, seasonTeamRecords, storeImportedGames } from "./utils/scheduleData.js";
 import { isScoreboardRefreshTime } from "./utils/scoreboardSchedule.js";
 
 dotenv.config();
@@ -394,7 +394,7 @@ app.get("/api/games", async (req, res) => {
 app.get("/api/schedule", async (req, res) => {
   try {
     const season = parseInt(req.query.year) || new Date().getFullYear();
-    const [weeks, teams] = await Promise.all([
+    const [weeks, teams, seasonGames] = await Promise.all([
       Game.aggregate([
         { $match: { season } },
         { $group: { _id: "$week", startDate: { $min: "$startDate" } } },
@@ -422,6 +422,7 @@ app.get("/api/schedule", async (req, res) => {
         } },
         { $sort: { name: 1 } },
       ]),
+      Game.find({ season }).select("homeTeam awayTeam homePoints awayPoints completed").lean(),
     ]);
 
     const currentWeek = currentScheduleWeek(weeks);
@@ -444,7 +445,12 @@ app.get("/api/schedule", async (req, res) => {
       }
     }
 
-    const games = await Game.find(filter).sort({ startDate: 1 }).lean();
+    const records = seasonTeamRecords(seasonGames);
+    const games = (await Game.find(filter).sort({ startDate: 1 }).lean()).map(game => ({
+      ...game,
+      homeRecord: records.get(game.homeTeam) || "0-0",
+      awayRecord: records.get(game.awayTeam) || "0-0",
+    }));
     res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
     res.json({ season, games, weeks, teams, currentWeek });
   } catch (err) {
@@ -459,10 +465,9 @@ app.get("/api/team-summary", async (req, res) => {
     if (!team) return res.status(400).json({ error: "team is required" });
 
     const season = parseInt(year) || new Date().getFullYear();
-    const games = await Game.find({
-      season,
-      $or: [{ homeTeam: team }, { awayTeam: team }],
-    }).sort({ startDate: 1 }).lean();
+    const seasonGames = await Game.find({ season }).sort({ startDate: 1 }).lean();
+    const games = seasonGames.filter(game => game.homeTeam === team || game.awayTeam === team);
+    const records = seasonTeamRecords(seasonGames);
 
     const now = new Date();
     let wins = 0, losses = 0;
@@ -475,7 +480,7 @@ app.get("/api/team-summary", async (req, res) => {
       const oppScore = isHome ? g.awayPoints : g.homePoints;
       const opponent = isHome ? g.awayTeam : g.homeTeam;
 
-      if (teamScore != null && oppScore != null) {
+      if (g.completed === true && teamScore != null && oppScore != null) {
         if (teamScore > oppScore) wins++;
         else if (teamScore < oppScore) losses++;
         played.push({ opponent, teamScore, oppScore, isHome, startDate: g.startDate });
@@ -489,6 +494,8 @@ app.get("/api/team-summary", async (req, res) => {
           overUnder: g.overUnder ?? null,
           teamLogo: isHome ? g.homeLogo ?? null : g.awayLogo ?? null,
           opponentLogo: isHome ? g.awayLogo ?? null : g.homeLogo ?? null,
+          teamRecord: records.get(team) || "0-0",
+          opponentRecord: records.get(opponent) || "0-0",
         });
       }
     });

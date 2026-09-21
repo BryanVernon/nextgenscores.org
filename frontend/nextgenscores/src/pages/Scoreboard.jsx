@@ -1,8 +1,8 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import "../App.css";
 import { CONFERENCES, getTeamGroups } from "../teamOptions";
-import { gameDateLabel, gameStatus, groupGamesByDate, latestUpdate, spreadLabel } from "../scheduleUtils";
+import { gameDateLabel, gameStatus, groupGamesByDate, latestUpdate, spreadLabel, teamScheduleFilters, teamScheduleHref } from "../scheduleUtils";
 import { defaultScheduleConference } from "../scheduleFilters";
 import { effectiveScheduleConferences, scheduleConferenceGames } from "../schedulePreferences";
 import { AuthContext } from "../context/AuthContext";
@@ -126,7 +126,7 @@ export default function Scoreboard() {
             {CONFERENCES.map(value => <option key={value} value={value}>{value}</option>)}
           </select>
           <label htmlFor="team-filter">Team</label>
-          <select id="team-filter" value={team} onChange={event => changeFilters({ team: event.target.value, conference: "All" })}>
+          <select id="team-filter" value={team} onChange={event => changeFilters(event.target.value ? teamScheduleFilters(event.target.value) : { team: "", conference: "All" })}>
             <option value="">All teams</option>
             {team && !data.teams.some(item => item.name === team) && <option value={team}>{team}</option>}
             {teamGroups.top25.length > 0 && <optgroup label="AP Top 25">{teamGroups.top25.map(item => <option key={item.name} value={item.name}>#{item.rank} {item.name}</option>)}</optgroup>}
@@ -184,8 +184,8 @@ export function GameCard({ game, showDate = false }) {
   return <article className="game-card-content" aria-label={`${game.awayTeam} at ${game.homeTeam}`}>
     <div className="game-meta"><span className={`game-status status-${status.kind}`}>{status.label}</span>{dateLabel && <span className="meta-date">{dateLabel}</span>}<span className="meta-time">{time}</span></div>
     <div className="teams-fullwidth">
-      <TeamBlock name={game.awayTeam} score={game.awayPoints} logo={game.awayLogo} rank={game.awayApRank} winner={isFinal && game.awayPoints > game.homePoints} />
-      <TeamBlock name={game.homeTeam} score={game.homePoints} logo={game.homeLogo} rank={game.homeApRank} winner={isFinal && game.homePoints > game.awayPoints} />
+      <TeamBlock name={game.awayTeam} record={game.awayRecord} score={game.awayPoints} logo={game.awayLogo} rank={game.awayApRank} winner={isFinal && game.awayPoints > game.homePoints} />
+      <TeamBlock name={game.homeTeam} record={game.homeRecord} score={game.homePoints} logo={game.homeLogo} rank={game.homeApRank} winner={isFinal && game.homePoints > game.awayPoints} />
     </div>
     <div className="game-watch"><span><span className="game-detail-label">Watch</span> {game.outlet || "TV to be announced"}</span>{game.venue && <span className="game-venue">{game.venue}</span>}</div>
     {(spread || game.overUnder != null) && <div className="betting-card">
@@ -195,14 +195,14 @@ export function GameCard({ game, showDate = false }) {
   </article>;
 }
 
-function TeamBlock({ name, score, logo, rank, winner }) {
+function TeamBlock({ name, record, score, logo, rank, winner }) {
   const [failedLogo, setFailedLogo] = useState(null);
   return <div className={`team-info${winner ? " team-winner" : ""}`}>
     <div className="team-info-left">
       <div className="team-logo" aria-hidden="true">{logo && failedLogo !== logo
         ? <img src={logo} alt="" loading="lazy" onError={() => setFailedLogo(logo)} />
         : <span className="team-initials">{name?.slice(0, 2).toUpperCase()}</span>}</div>
-      <div className="team-name">{rank != null && <span className="team-rank">#{rank} </span>}{name}{winner && <span className="sr-only">, winner</span>}</div>
+      <Link className="team-name" to={teamScheduleHref(name)}>{rank != null && <span className="team-rank">#{rank} </span>}{name}{record && <span className="team-record">{record}</span>}{winner && <span className="sr-only">, winner</span>}</Link>
     </div>
     <div className="small-score" aria-label={score != null ? `${score} points` : "No score yet"}>{score ?? "—"}</div>
   </div>;
