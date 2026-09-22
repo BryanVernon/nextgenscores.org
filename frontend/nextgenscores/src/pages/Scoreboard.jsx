@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import StaticFilterPicker from "../components/StaticFilterPicker.jsx";
 import "../App.css";
 import { CONFERENCES, filterTeamGroups, getTeamGroups } from "../teamOptions";
 import { gameDateLabel, gameStatus, groupGamesByDate, latestUpdate, spreadLabel, teamScheduleFilters, teamScheduleHref } from "../scheduleUtils";
@@ -140,7 +141,7 @@ export default function Scoreboard() {
           ]} onSelect={value => changeFilters({ conference: value, team: "" })} />
           <label id="team-filter-label">Team</label>
           <div className="team-picker">
-            <button ref={teamTriggerRef} type="button" className="team-picker-trigger" aria-labelledby="team-filter-label" aria-haspopup="dialog" aria-expanded={teamMenuOpen} aria-controls="team-picker-menu" onClick={() => setTeamMenuOpen(open => !open)}>{team || "All teams"}<span aria-hidden="true">⌄</span></button>
+            <button ref={teamTriggerRef} type="button" className="team-picker-trigger" aria-labelledby="team-filter-label" aria-haspopup="dialog" aria-expanded={teamMenuOpen} aria-controls="team-picker-menu" onClick={() => setTeamMenuOpen(open => !open)}>{team || "All teams"}<span className="filter-picker-chevron" aria-hidden="true" /></button>
             {teamMenuOpen && <div id="team-picker-menu" className="team-picker-menu" role="dialog" aria-labelledby="team-filter-label" onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); closeTeamPicker(); } }}>
               <label className="sr-only" htmlFor="team-picker-search">Search teams</label>
               <input id="team-picker-search" type="search" value={teamSearch} onChange={event => setTeamSearch(event.target.value)} placeholder="Search teams" autoFocus />
@@ -188,35 +189,6 @@ export default function Scoreboard() {
       </div>
     </div>
   );
-}
-
-function StaticFilterPicker({ label, value, options, onSelect }) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef(null);
-  const id = `schedule-${label.toLowerCase().replace(/\s+/g, "-")}-filter`;
-  const selected = options.find(option => option.value === value) || options[0];
-
-  function close() {
-    setOpen(false);
-    requestAnimationFrame(() => triggerRef.current?.focus());
-  }
-
-  function select(value) {
-    onSelect(value);
-    close();
-  }
-
-  return <>
-    <label id={`${id}-label`}>{label}</label>
-    <div className="static-filter-picker">
-      <button ref={triggerRef} type="button" className="static-filter-picker-trigger" aria-labelledby={`${id}-label`} aria-haspopup="dialog" aria-expanded={open} aria-controls={`${id}-menu`} onClick={() => setOpen(current => !current)}>{selected?.label}<span aria-hidden="true">⌄</span></button>
-      {open && <div id={`${id}-menu`} className="static-filter-picker-menu" role="dialog" aria-labelledby={`${id}-label`} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); close(); } }}>
-        <div className="static-filter-picker-options">
-          {options.map(option => <button key={option.value} type="button" className={option.value === value ? "selected" : ""} aria-pressed={option.value === value} onClick={() => select(option.value)}>{option.label}</button>)}
-        </div>
-      </div>}
-    </div>
-  </>;
 }
 
 export function GameCard({ game, showDate = false }) {

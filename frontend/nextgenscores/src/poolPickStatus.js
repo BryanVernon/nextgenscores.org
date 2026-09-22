@@ -20,5 +20,7 @@ export function poolPickStatus(games, picks = {}, now = Date.now()) {
 }
 
 export function shouldShowPickPrompt(poolIds, statuses) {
-  return poolIds.length > 0 && poolIds.some(id => !statuses[id]?.complete);
+  return poolIds.length > 0
+    && poolIds.every(id => statuses[id])
+    && poolIds.some(id => !statuses[id].complete);
 }

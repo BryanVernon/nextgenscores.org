@@ -33,8 +33,9 @@ test("locked games with missing picks are never presented as complete", () => {
   });
 });
 
-test("the pick prompt disappears only after every pool is complete", () => {
+test("the pick prompt waits for every pool status before appearing", () => {
   assert.equal(shouldShowPickPrompt(["a", "b"], { a: { complete: true }, b: { complete: true } }), false);
-  assert.equal(shouldShowPickPrompt(["a", "b"], { a: { complete: true } }), true);
+  assert.equal(shouldShowPickPrompt(["a", "b"], { a: { complete: true } }), false);
+  assert.equal(shouldShowPickPrompt(["a", "b"], { a: { complete: true }, b: { complete: false } }), true);
   assert.equal(shouldShowPickPrompt([], {}), false);
 });

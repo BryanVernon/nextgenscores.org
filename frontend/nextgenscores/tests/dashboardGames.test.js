@@ -39,3 +39,14 @@ test("favorite next-game cards show the kickoff date", () => {
 test("favorite game day includes the selected timezone date", () => {
   assert.equal(favoriteGameDay("2026-09-20T03:30:00Z", "America/Chicago"), "Saturday 9/19");
 });
+
+test("dashboard puts pools and current leaderboards after the schedule with a pick reminder", () => {
+  const dashboardSource = readFileSync(new URL("../src/pages/Dashboard.jsx", import.meta.url), "utf8");
+  const featuredIndex = dashboardSource.indexOf("<FeaturedGamesPanel />");
+  const poolsIndex = dashboardSource.indexOf("dashboard-picks-section");
+
+  assert.ok(featuredIndex >= 0 && poolsIndex > featuredIndex);
+  assert.match(dashboardSource, /DashboardPickPrompt/);
+  assert.match(dashboardSource, /DashboardLeaderboardPanel/);
+  assert.match(dashboardSource, /to="\/pickem"/);
+});

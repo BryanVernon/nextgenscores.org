@@ -3,7 +3,7 @@ export const CONFERENCES = ["AP Top 25", "Featured games", "SEC", "Big Ten", "AC
 export function filterTeamGroups(groups, query) {
   const normalized = query.trim().toLocaleLowerCase();
   if (!normalized) return groups;
-  const matches = team => team.name.toLocaleLowerCase().includes(normalized);
+  const matches = team => team.name.toLocaleLowerCase().startsWith(normalized);
   return {
     top25: groups.top25.filter(matches),
     remaining: groups.remaining

@@ -6,6 +6,7 @@ import { lineupLabel } from "../gameLineup";
 import { featuredGames, featuredWeekIndex } from "../featuredGames";
 import { favoriteGameDay, favoriteTeamNextGame } from "../dashboardGames";
 import useTimeZone from "../useTimeZone";
+import { poolPickStatus, shouldShowPickPrompt } from "../poolPickStatus";
 import { GameCard } from "./Scoreboard";
 
 const API_BASE = import.meta.env.MODE === "development"
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [poolsLoading, setPoolsLoading] = useState(true);
   const [poolsError, setPoolsError] = useState(null);
   const [poolsAttempt, setPoolsAttempt] = useState(0);
+  const [poolStatuses, setPoolStatuses] = useState({});
 
   useEffect(() => {
     if (!user) return;
@@ -29,7 +31,10 @@ export default function Dashboard() {
       })
       .then(body => {
         if (!Array.isArray(body)) throw new Error("Couldn't load your pools.");
-        if (!controller.signal.aborted) setPools(body);
+        if (!controller.signal.aborted) {
+          setPoolStatuses({});
+          setPools(body);
+        }
       })
       .catch(error => {
         if (!controller.signal.aborted) setPoolsError(error.message);
@@ -37,6 +42,23 @@ export default function Dashboard() {
       .finally(() => { if (!controller.signal.aborted) setPoolsLoading(false); });
     return () => controller.abort();
   }, [user, poolsAttempt]);
+
+  useEffect(() => {
+    if (poolsLoading || poolsError || pools.length === 0) return;
+    const controller = new AbortController();
+    Promise.all(pools.map(async pool => {
+      const response = await authFetch(`${API_BASE}/api/pools/${pool.id}/picks/current`, { signal: controller.signal });
+      if (!response.ok) throw new Error("Couldn't load your pick status.");
+      const body = await response.json();
+      if (!Array.isArray(body?.games)) throw new Error("Couldn't load your pick status.");
+      return [pool.id, poolPickStatus(body.games, body.picks || {})];
+    }))
+      .then(entries => { if (!controller.signal.aborted) setPoolStatuses(Object.fromEntries(entries)); })
+      .catch(() => { if (!controller.signal.aborted) setPoolStatuses({}); });
+    return () => controller.abort();
+  }, [pools, poolsError, poolsLoading]);
+
+  const showPickPrompt = !poolsLoading && !poolsError && shouldShowPickPrompt(pools.map(pool => pool.id), poolStatuses);
 
   function retryPools() {
     setPoolsLoading(true);
@@ -53,11 +75,6 @@ export default function Dashboard() {
         <p className="eyebrow">Your season hub</p><h1>Welcome back, <span>{user.name}</span>.</h1><p className="dashboard-lede">Your picks, teams, standings, and Saturday schedule in one place.</p>
       </header>
 
-      <section className="dashboard-picks-section" aria-labelledby="dashboard-picks-title">
-        <div className="dashboard-section-heading"><div><p className="eyebrow">Your next action</p><h2 id="dashboard-picks-title">Pick ’Em center</h2></div><Link className="dashboard-link" to="/pickem">Manage pools <span aria-hidden="true">→</span></Link></div>
-        <PoolPanel pools={pools} loading={poolsLoading} error={poolsError} onRetry={retryPools} />
-      </section>
-
       <section className="dashboard-teams-section" aria-labelledby="dashboard-teams-title">
         <div className="dashboard-section-heading"><div><p className="eyebrow">Follow the action</p><h2 id="dashboard-teams-title">Your teams</h2></div><Link className="dashboard-link" to="/settings">Edit teams <span aria-hidden="true">→</span></Link></div>
         <div className="dashboard-grid">
@@ -68,6 +85,13 @@ export default function Dashboard() {
       </section>
 
       <FeaturedGamesPanel />
+
+      <section className="dashboard-picks-section" aria-labelledby="dashboard-picks-title">
+        <div className="dashboard-section-heading"><div><p className="eyebrow">Pick ’Em</p><h2 id="dashboard-picks-title">Your pools</h2></div><Link className="dashboard-link" to="/pickem">Manage pools <span aria-hidden="true">→</span></Link></div>
+        <DashboardPickPrompt show={showPickPrompt} />
+        <PoolPanel pools={pools} loading={poolsLoading} error={poolsError} onRetry={retryPools} />
+        <DashboardLeaderboardPanel pools={pools} loading={poolsLoading} error={poolsError} />
+      </section>
     </div>
   );
 }
@@ -179,6 +203,45 @@ function FeaturedGamesPanel() {
     </div>
     {loading ? <div className="dashboard-featured-status" role="status">Loading this week’s featured games...</div> : error ? <div className="dashboard-featured-status" role="alert"><p>{error}</p><button className="dashboard-link" onClick={retry}>Try again</button></div> : games.length === 0 ? <div className="dashboard-featured-status">No featured games are scheduled this week. <Link className="dashboard-link" to="/schedule">View the full schedule <span aria-hidden="true">→</span></Link></div> : <ul className="games-grid dashboard-featured-grid">{games.map(game => <li className="game-card" key={game._id || game.id}><GameCard game={game} showDate /></li>)}</ul>}
   </section>;
+}
+
+function DashboardPickPrompt({ show }) {
+  if (!show) return null;
+  return <aside className="dashboard-pick-prompt" aria-label="Pick reminder">
+    <div><p className="eyebrow">Your next action</p><h3>Finish this week’s picks</h3><p>One or more pools still need picks before kickoff.</p></div>
+    <Link className="dashboard-link" to="/pickem">Make picks <span aria-hidden="true">→</span></Link>
+  </aside>;
+}
+
+function DashboardLeaderboardPanel({ pools, loading, error }) {
+  if (loading || error || pools.length === 0) return null;
+  return <section className="dashboard-leaderboards" aria-labelledby="dashboard-leaderboards-title">
+    <div className="dashboard-section-heading"><div><p className="eyebrow">Current standings</p><h3 id="dashboard-leaderboards-title">Leaderboard</h3></div><Link className="dashboard-link" to="/leaderboard">All standings <span aria-hidden="true">→</span></Link></div>
+    <div className="dashboard-leaderboard-list">{pools.map(pool => <DashboardPoolLeaderboard key={pool.id} pool={pool} />)}</div>
+  </section>;
+}
+
+function DashboardPoolLeaderboard({ pool }) {
+  const [standings, setStandings] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    authFetch(`${API_BASE}/api/pools/${pool.id}/leaderboard/current`, { signal: controller.signal })
+      .then(async response => {
+        const body = await response.json();
+        if (!response.ok || !Array.isArray(body?.leaderboard)) throw new Error("Unable to load standings.");
+        if (!controller.signal.aborted) setStandings(body);
+      })
+      .catch(() => { if (!controller.signal.aborted) setError(true); });
+    return () => controller.abort();
+  }, [pool.id]);
+
+  return <article className="dashboard-leaderboard-card">
+    <div><strong>{pool.name}</strong><small>{standings ? `Week ${standings.week} · ${standings.completedGames}/${standings.totalGames} games final` : error ? "Standings unavailable" : "Loading standings..."}</small></div>
+    {standings && <ol>{standings.leaderboard.slice(0, 3).map(entry => <li key={entry.userId}><span>#{entry.rank} {entry.name}</span><b>{entry.correct}</b></li>)}</ol>}
+    <Link className="dashboard-link" to={`/leaderboard`}>View leaderboard <span aria-hidden="true">→</span></Link>
+  </article>;
 }
 
 function PoolPanel({ pools, loading, error, onRetry }) {

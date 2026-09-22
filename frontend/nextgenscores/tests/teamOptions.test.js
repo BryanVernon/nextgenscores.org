@@ -16,3 +16,15 @@ test("team search filters every team group without changing the group structure"
   });
   assert.deepEqual(filterTeamGroups(groups, ""), groups);
 });
+
+test("team search only shows names beginning with the typed letters", () => {
+  const groups = {
+    top25: [{ name: "Tennessee", rank: 7 }, { name: "Ohio State", rank: 2 }],
+    remaining: [{ name: "American", teams: [{ name: "Temple" }, { name: "UTEP" }] }],
+  };
+
+  assert.deepEqual(filterTeamGroups(groups, "te"), {
+    top25: [{ name: "Tennessee", rank: 7 }],
+    remaining: [{ name: "American", teams: [{ name: "Temple" }] }],
+  });
+});

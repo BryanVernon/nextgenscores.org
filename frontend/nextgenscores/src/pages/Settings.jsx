@@ -3,6 +3,7 @@ import { AuthContext } from "../context/AuthContext";
 import authFetch from "../authFetch";
 import { COMMON_TIME_ZONES, DEFAULT_TIME_ZONE, formatDateTime } from "../timeZone";
 import { DEFAULT_SCHEDULE_CONFERENCES, effectiveScheduleConferences, visibleScheduleConferences } from "../schedulePreferences";
+import StaticFilterPicker from "../components/StaticFilterPicker.jsx";
 
 const API_BASE = import.meta.env.MODE === "development"
   ? `${window.location.protocol}//${window.location.hostname}:3002`
@@ -103,6 +104,10 @@ export default function Settings() {
   const visibleConferenceOptions = visibleScheduleConferences(conferenceOptions, showAllScheduleConferences);
   const teamOptions = conference ? teamsByConference[conference] || [] : [];
   const otherTimeZones = (Intl.supportedValuesOf?.("timeZone") || []).filter(zone => !COMMON_TIME_ZONES.some(([value]) => value === zone));
+  const timeZoneOptions = [
+    ...COMMON_TIME_ZONES.map(([value, label]) => ({ value, label })),
+    ...otherTimeZones.map(value => ({ value, label: value.replaceAll("_", " ") })),
+  ];
 
   return <div className="settings-page">
     <p className="eyebrow">Your account</p><h1>Settings</h1>
@@ -110,9 +115,9 @@ export default function Settings() {
 
     <section className="settings-section">
       <div className="settings-section-heading"><span className="settings-icon" aria-hidden="true">★</span><div><h2>Favorite teams</h2><p>Pick a conference, then a team, and add as many as you'd like.</p></div></div>
-      <div className="team-picker">
-        <label className="sr-only" htmlFor="favorite-conference">Conference</label><select id="favorite-conference" value={conference} onChange={event => { setConference(event.target.value); setTeamChoice(""); }}><option value="">Select conference...</option>{conferenceOptions.map(item => <option key={item} value={item}>{item}</option>)}</select>
-        <label className="sr-only" htmlFor="favorite-team">Team</label><select id="favorite-team" value={teamChoice} onChange={event => setTeamChoice(event.target.value)} disabled={!conference}><option value="">Select team...</option>{teamOptions.map(item => <option key={item} value={item}>{item}</option>)}</select>
+      <div className="team-picker settings-team-picker">
+        <StaticFilterPicker label="Conference" visuallyHiddenLabel value={conference} options={[{ value: "", label: "Select conference..." }, ...conferenceOptions.map(value => ({ value, label: value }))]} onSelect={value => { setConference(value); setTeamChoice(""); }} />
+        <StaticFilterPicker label="Team" visuallyHiddenLabel value={teamChoice} options={[{ value: "", label: "Select team..." }, ...teamOptions.map(value => ({ value, label: value }))]} onSelect={setTeamChoice} disabled={!conference} />
         <button className="btn" type="button" onClick={addTeam} disabled={!teamChoice}>Add</button>
       </div>
       {selected.length > 0 ? <ul className="selected-teams">{selected.map(team => <li key={team}><span>{team}</span><button type="button" onClick={() => removeTeam(team)} aria-label={`Remove ${team}`}>×</button></li>)}</ul> : <p className="teams-empty">No favorites selected yet.</p>}
@@ -144,12 +149,7 @@ export default function Settings() {
 
     <section className="settings-section appearance-section">
       <div className="settings-section-heading"><div><h2>Timezone</h2><p>Use this timezone for kickoffs, schedule dates, and email reminders. Daylight saving time adjusts automatically.</p></div></div>
-      <label className="theme-team-select" htmlFor="time-zone">Display times in
-        <select id="time-zone" value={timeZone} onChange={event => setTimeZone(event.target.value)}>
-          <optgroup label="US timezones">{COMMON_TIME_ZONES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</optgroup>
-          <optgroup label="Other timezones">{otherTimeZones.map(zone => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}</optgroup>
-        </select>
-      </label>
+      <StaticFilterPicker label="Display times in" className="settings-timezone-picker" value={timeZone} options={timeZoneOptions} onSelect={setTimeZone} />
       <p className="settings-time-preview">Current time: {formatDateTime(new Date(), timeZone, { weekday: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}</p>
       <p className="settings-time-preview">Missing-pick reminders arrive on Fridays starting at 9 a.m. in this timezone.</p>
     </section>
